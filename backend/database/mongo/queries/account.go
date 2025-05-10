@@ -45,7 +45,10 @@ func (q *accountQuery) GetByUsernameOrEmail(username, email string, opts ...Opti
 	optFind := &options.FindOneOptions{Projection: opt.QueryOnlyField()}
 	ctx, cancel := timeoutFunc(q.context)
 	defer cancel()
-	if err := q.collection.FindOne(ctx, bson.M{"$or": bson.A{"username", username, "email", email}}, optFind).Decode(&data); err != nil {
+	if err := q.collection.FindOne(ctx, bson.M{"$or": bson.A{
+		bson.M{"username": username},
+		bson.M{"email": email},
+	}}, optFind).Decode(&data); err != nil {
 		if errors.Is(err, mongoDriver.ErrNoDocuments) {
 			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Account not found"})
 		}
@@ -101,7 +104,6 @@ func (q *accountQuery) UpdateProfileById(id primitive.ObjectID, profile AccountU
 			"first_name": profile.FirstName,
 			"last_name":  profile.LastName,
 			"avatar":     profile.Avatar,
-			"phone":      profile.Phone,
 		},
 	})
 	if err != nil {

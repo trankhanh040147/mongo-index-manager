@@ -91,7 +91,7 @@ func (c *controller) Login(ctx *fiber.Ctx) error {
 		return err
 	}
 	if err = bcrypt.CompareHashAndPassword([]byte(account.PasswordHash), []byte(requestBody.Password)); err != nil {
-		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Invalid password"})
+		return response.New(ctx, response.Options{Code: fiber.StatusBadRequest, Data: "Invalid password"})
 	}
 	token, err := queries.NewAuthToken(ctx.Context()).CreateOne(models.AuthToken{
 		ExpiredAt: time.Now().Add(cfg.RefreshTokenTimeout),
@@ -148,7 +148,6 @@ func (c *controller) GetProfile(ctx *fiber.Ctx) error {
 			FirstName: account.FirstName,
 			LastName:  account.LastName,
 			Avatar:    account.Avatar,
-			Phone:     account.Phone,
 		},
 	})
 }
@@ -165,7 +164,6 @@ func (c *controller) UpdateProfile(ctx *fiber.Ctx) error {
 		FirstName: requestBody.FirstName,
 		LastName:  requestBody.LastName,
 		Avatar:    requestBody.Avatar,
-		Phone:     requestBody.Phone,
 	}); err != nil {
 		return err
 	}

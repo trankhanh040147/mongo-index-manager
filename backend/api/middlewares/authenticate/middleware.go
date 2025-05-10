@@ -37,12 +37,12 @@ func RefreshToken(ctx *fiber.Ctx) error {
 		return response.NewError(fiber.StatusUnauthorized, response.ErrorOptions{Data: respErr.ErrTokenWrong})
 	}
 	queryOption := queries.NewOptions()
-	queryOption.SetOnlyFields("_id", "user_id")
+	queryOption.SetOnlyFields("_id", "account_id")
 	token, err := queries.NewAuthToken(ctx.Context()).GetById(tokenId, queryOption)
 	if err != nil {
 		return response.NewError(fiber.StatusUnauthorized, response.ErrorOptions{Data: respErr.ErrTokenRevoked})
 	}
-	queryOption.SetOnlyFields("_id")
+	queryOption.SetOnlyFields("username", "first_name", "last_name", "avatar", "phone", "email", "_id")
 	user, err := queries.NewAccount(ctx.Context()).GetById(token.AccountId, queryOption)
 	if err != nil {
 		return response.NewError(fiber.StatusUnauthorized, response.ErrorOptions{Data: "User not found"})
@@ -73,14 +73,14 @@ func AccessToken(ctx *fiber.Ctx) error {
 	if err != nil {
 		return response.NewError(fiber.StatusUnauthorized, response.ErrorOptions{Data: respErr.ErrTokenWrong})
 	}
-	opt := queries.NewOptions()
-	opt.SetOnlyFields("_id", "user_id")
-	tok, err := queries.NewAuthToken(ctx.Context()).GetById(tokenId, opt)
+	queryOption := queries.NewOptions()
+	queryOption.SetOnlyFields("_id", "account_id")
+	tok, err := queries.NewAuthToken(ctx.Context()).GetById(tokenId, queryOption)
 	if err != nil {
 		return response.NewError(fiber.StatusUnauthorized, response.ErrorOptions{Data: respErr.ErrTokenRevoked})
 	}
-	opt.SetOnlyFields("_id", "username", "alias", "avatar_url", "oauth_access_token")
-	user, err := queries.NewAccount(ctx.Context()).GetById(tok.AccountId, opt)
+	queryOption.SetOnlyFields("username", "first_name", "last_name", "avatar", "email", "_id")
+	user, err := queries.NewAccount(ctx.Context()).GetById(tok.AccountId, queryOption)
 	if err != nil {
 		return response.NewError(fiber.StatusUnauthorized, response.ErrorOptions{Data: "User not found"})
 	}

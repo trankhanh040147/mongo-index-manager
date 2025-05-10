@@ -130,3 +130,5 @@ certs
 /venv
 /.idea/vcs.xml
 /.idea/modules.xml
+/.idea
+/backend/.idea

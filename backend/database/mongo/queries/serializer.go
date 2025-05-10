@@ -9,5 +9,4 @@ type AccountUpdateProfileByIdRequest struct {
 	FirstName string
 	LastName  string
 	Avatar    string
-	Phone     string
 }

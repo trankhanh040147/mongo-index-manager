@@ -3,6 +3,8 @@ package mongo
 import (
 	"context"
 
+	"go.mongodb.org/mongo-driver/bson"
+
 	"doctor-manager-api/common/configure"
 	"doctor-manager-api/common/logging"
 
@@ -25,6 +27,8 @@ func InitDatabase() {
 
 func autoIndexing() {
 	if cfg.MongoAutoIndexing {
+		managerDBAccountIndex()
+		managerDBAuthTokenIndex()
 	}
 }
 
@@ -50,4 +54,42 @@ func initClientConnection(mongoURI string, enableAPM bool) *mongo.Client {
 		logger.Fatal().Err(err).Str("function", "initClientConnection").Str("functionInline", "client.Ping").Msg("database")
 	}
 	return client
+}
+
+func managerDBAccountIndex() {
+	collIndex := utils.GetAccountCollection().Indexes()
+	ctxDrop, cancelDrop := utils.GetContextTimeout(context.Background())
+	defer cancelDrop()
+	_, _ = collIndex.DropAll(ctxDrop)
+	ctx, cancel := utils.GetContextTimeout(context.Background())
+	defer cancel()
+	if _, err := collIndex.CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys:    bson.D{{Key: "username", Value: 1}},
+			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys:    bson.D{{Key: "email", Value: 1}},
+			Options: options.Index().SetUnique(true),
+		},
+	}); err != nil {
+		logger.Fatal().Err(err).Msg("managerDBAccountIndex")
+	}
+}
+
+func managerDBAuthTokenIndex() {
+	collIndex := utils.GetAuthTokenCollection().Indexes()
+	ctxDrop, cancelDrop := utils.GetContextTimeout(context.Background())
+	defer cancelDrop()
+	_, _ = collIndex.DropAll(ctxDrop)
+	ctx, cancel := utils.GetContextTimeout(context.Background())
+	defer cancel()
+	if _, err := collIndex.CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys:    bson.D{{Key: "expired_at", Value: 1}},
+			Options: options.Index().SetExpireAfterSeconds(0),
+		},
+	}); err != nil {
+		logger.Fatal().Err(err).Msg("managerDBAuthTokenIndex")
+	}
 }

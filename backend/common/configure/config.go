@@ -15,7 +15,7 @@ var config *Configuration
 type Configuration struct {
 	TokenPublicKey                 string        `env:"TOKEN_PUBLIC_KEY_PATH,file" envDefault:"certs/public.pem" envExpand:"true"`
 	TokenPrivateKey                string        `env:"TOKEN_PRIVATE_KEY_PATH,file" envDefault:"certs/private.pem" envExpand:"true"`
-	Port                           string        `env:"PORT" envDefault:"8172"`
+	Port                           string        `env:"PORT" envDefault:"8223"`
 	Host                           string        `env:"HOST" envDefault:"0.0.0.0"`
 	TokenType                      string        `env:"TOKEN_TYPE" envDefault:"Bearer"`
 	MongoDBManagerUri              string        `env:"MONGODB_MANAGER_URI" envDefault:"mongodb://localhost:27017"`

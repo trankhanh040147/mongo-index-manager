@@ -50,14 +50,12 @@ type AuthGetProfileResponse struct {
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Avatar    string `json:"avatar"`
-	Phone     string `json:"phone"`
 }
 
 type AuthUpdateProfileBodyValidate struct {
 	FirstName string `json:"first_name,omitempty"`
 	LastName  string `json:"last_name,omitempty"`
 	Avatar    string `json:"avatar,omitempty"`
-	Phone     string `json:"phone,omitempty" validate:"len=10"`
 }
 
 func (v *AuthUpdateProfileBodyValidate) Validate() error {

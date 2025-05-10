@@ -13,7 +13,6 @@ type Account struct {
 	FirstName    string             `bson:"first_name"`
 	LastName     string             `bson:"last_name"`
 	Avatar       string             `bson:"avatar"`
-	Phone        string             `bson:"phone"`
 	Email        string             `bson:"email"`
 	PasswordHash string             `bson:"password_hash"`
 	Id           primitive.ObjectID `bson:"_id,omitempty"`

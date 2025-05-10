@@ -6,7 +6,7 @@
 |------------------------------------|----------------------------------------------------------------|-----------|
 | TOKEN_PUBLIC_KEY_PATH              | certs/public.pem                                               |           |
 | TOKEN_PRIVATE_KEY_PATH             | certs/private.pem                                              |           |
-| PORT                               | 8172                                                           |           |
+| PORT                               | 8223                                                           |           |
 | HOST                               | 0.0.0.0                                                        |           |
 | TOKEN_TYPE                         | Bearer                                                         |           |
 | MONGODB_MINI_APP_URI               | mongodb://localhost:27017                                      |           |

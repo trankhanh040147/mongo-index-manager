@@ -1,13 +1,13 @@
 *.mo
 .DS_Store
 .eslintcache
-../.idea/
+.idea/
 /.env
 /.git
 /.git/*
 /venv/
 /node_modules/
-Dockerfile
+Dockerfile*
 
 /deploy
 *.log
