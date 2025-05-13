@@ -38,7 +38,7 @@ func New() Controller {
 	return &controller{}
 }
 
-func (c *controller) Register(ctx *fiber.Ctx) error {
+func (ctrl *controller) Register(ctx *fiber.Ctx) error {
 	var requestBody serializers.AuthRegisterBodyValidate
 	if err := ctx.BodyParser(&requestBody); err != nil {
 		return response.New(ctx, response.Options{Code: fiber.StatusBadRequest, Data: respErr.ErrFieldWrongType})
@@ -76,7 +76,7 @@ func (c *controller) Register(ctx *fiber.Ctx) error {
 	})
 }
 
-func (c *controller) Login(ctx *fiber.Ctx) error {
+func (ctrl *controller) Login(ctx *fiber.Ctx) error {
 	var requestBody serializers.AuthLoginBodyValidate
 	if err := ctx.BodyParser(&requestBody); err != nil {
 		return response.New(ctx, response.Options{Code: fiber.StatusBadRequest, Data: respErr.ErrFieldWrongType})
@@ -113,7 +113,7 @@ func (c *controller) Login(ctx *fiber.Ctx) error {
 	})
 }
 
-func (c *controller) RefreshToken(ctx *fiber.Ctx) error {
+func (ctrl *controller) RefreshToken(ctx *fiber.Ctx) error {
 	localService := local.New(ctx)
 	tokenQuery := queries.NewAuthToken(ctx.Context())
 	if err := tokenQuery.DeleteById(localService.GetTokenId()); err != nil {
@@ -139,7 +139,7 @@ func (c *controller) RefreshToken(ctx *fiber.Ctx) error {
 	})
 }
 
-func (c *controller) GetProfile(ctx *fiber.Ctx) error {
+func (ctrl *controller) GetProfile(ctx *fiber.Ctx) error {
 	account := local.New(ctx).GetUser()
 	return response.New(ctx, response.Options{
 		Data: serializers.AuthGetProfileResponse{
@@ -152,7 +152,7 @@ func (c *controller) GetProfile(ctx *fiber.Ctx) error {
 	})
 }
 
-func (c *controller) UpdateProfile(ctx *fiber.Ctx) error {
+func (ctrl *controller) UpdateProfile(ctx *fiber.Ctx) error {
 	var requestBody serializers.AuthUpdateProfileBodyValidate
 	if err := ctx.BodyParser(&requestBody); err != nil {
 		return response.New(ctx, response.Options{Code: fiber.StatusBadRequest, Data: respErr.ErrFieldWrongType})
