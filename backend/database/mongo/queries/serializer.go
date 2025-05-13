@@ -10,3 +10,10 @@ type AccountUpdateProfileByIdRequest struct {
 	LastName  string
 	Avatar    string
 }
+
+type DatabaseUpdateInfoByIdRequest struct {
+	Name        string
+	Description string
+	Uri         string
+	DBName      string
+}

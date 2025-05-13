@@ -24,6 +24,7 @@ type DatabaseQuery interface {
 	CreateOne(database models.Database) (newAccount *models.Database, err error)
 	GetTotalByQuery(query string) (total int64, err error)
 	GetByQuery(query string, opts ...OptionsQuery) (databases []models.Database, err error)
+	UpdateInfoById(id primitive.ObjectID, request DatabaseUpdateInfoByIdRequest) error
 }
 
 type databaseQuery struct {
@@ -149,4 +150,26 @@ func (q *databaseQuery) GetByQuery(query string, opts ...OptionsQuery) ([]models
 		return nil, response.NewError(fiber.StatusInternalServerError)
 	}
 	return data, nil
+}
+
+func (q *databaseQuery) UpdateInfoById(id primitive.ObjectID, request DatabaseUpdateInfoByIdRequest) error {
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	result, err := q.collection.UpdateByID(ctx, id, bson.M{
+		"$set": bson.M{
+			"updated_at":  time.Now(),
+			"name":        request.Name,
+			"uri":         request.Uri,
+			"db_name":     request.DBName,
+			"description": request.Description,
+		},
+	})
+	if err != nil {
+		logger.Error().Err(err).Str("function", "UpdateProfileById").Str("functionInline", "q.collection.UpdateByID").Msg("databaseQuery")
+		return response.NewError(fiber.StatusInternalServerError)
+	}
+	if result.MatchedCount == 0 {
+		return response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: respErr.ErrResourceNotFound})
+	}
+	return nil
 }

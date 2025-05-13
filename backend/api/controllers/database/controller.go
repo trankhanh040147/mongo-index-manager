@@ -155,35 +155,39 @@ func (ctrl *controller) Update(ctx *fiber.Ctx) error {
 		return err
 	}
 	queryOption := queries.NewOptions()
-	queryOption.SetOnlyFields("_id")
 	databaseQuery := queries.NewDatabase(ctx.Context())
-	if _, err := databaseQuery.GetByName(requestBody.Name, queryOption); err != nil {
-		if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
-			return err
-		}
-	} else {
-		return response.NewError(fiber.StatusConflict, response.ErrorOptions{Data: respErr.ErrResourceConflict})
+	queryOption.SetOnlyFields("name", "uri", "db_name", "description")
+	database, err := databaseQuery.GetById(id, queryOption)
+	if err != nil {
+		return err
 	}
-	if requestBody.IsTestConnection {
-		if err := mongodb.New().TestConnection(requestBody.Uri); err != nil {
-			logger.Error().Err(err).Str("function", "Create").Str("functionInline", "mongodb.New().TestConnection").Msg("database-controller")
+	if database.Name == requestBody.Name && database.Description == requestBody.Description &&
+		database.Uri == requestBody.Uri && database.DBName == requestBody.DBName {
+		return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
+	}
+	if database.Name != requestBody.Name {
+		if _, err = databaseQuery.GetByName(requestBody.Name, queryOption); err != nil {
+			if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
+				return err
+			}
+		} else {
+			return response.NewError(fiber.StatusConflict, response.ErrorOptions{Data: respErr.ErrResourceConflict})
+		}
+	}
+	if (database.Uri != requestBody.Uri && requestBody.IsTestConnection) || requestBody.IsSyncIndex {
+		if err = mongodb.New().TestConnection(requestBody.Uri); err != nil {
+			logger.Error().Err(err).Str("function", "Update").Str("functionInline", "mongodb.New().TestConnection").Msg("database-controller")
 			return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot connect to database"})
 		}
 	}
 	// TODO: handle import indexes option
-	database, err := databaseQuery.CreateOne(models.Database{
+	if err = databaseQuery.UpdateInfoById(id, queries.DatabaseUpdateInfoByIdRequest{
 		Name:        requestBody.Name,
 		Description: requestBody.Description,
 		Uri:         requestBody.Uri,
 		DBName:      requestBody.DBName,
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
-	return response.New(ctx, response.Options{
-		Code: fiber.StatusCreated,
-		Data: fiber.Map{
-			"id": database.Id,
-		},
-	})
+	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
 }
