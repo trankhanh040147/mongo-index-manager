@@ -72,4 +72,5 @@ func addMiddleware(app *fiber.App) {
 func addV1Route(app *fiber.App) {
 	route := app.Group("/api/doctor-manager-api/v1")
 	routers.NewAuth(route).V1()
+	routers.NewDatabase(route).V1()
 }

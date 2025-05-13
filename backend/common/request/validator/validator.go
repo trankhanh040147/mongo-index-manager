@@ -37,7 +37,7 @@ func InitValidateEngine() *validator.Validate {
 		}
 		return name
 	})
-	RegisterValidate()
+	RegisterValidate(databaseUri)
 	return validateEngine
 }
 

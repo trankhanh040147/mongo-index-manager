@@ -13,6 +13,7 @@ type UtilityService interface {
 	GetBulkWriteContextTimeout(ctx context.Context) (context.Context, context.CancelFunc)
 	GetAccountCollection() (coll *mongo.Collection)
 	GetAuthTokenCollection() (coll *mongo.Collection)
+	GetDatabaseCollection() (coll *mongo.Collection)
 }
 
 type utilityService struct{}
@@ -40,4 +41,8 @@ func (s *utilityService) GetAccountCollection() (coll *mongo.Collection) {
 
 func (s *utilityService) GetAuthTokenCollection() (coll *mongo.Collection) {
 	return s.getManagerDb().Collection(new(models.AuthToken).CollectionName())
+}
+
+func (s *utilityService) GetDatabaseCollection() (coll *mongo.Collection) {
+	return s.getManagerDb().Collection(new(models.Database).CollectionName())
 }
