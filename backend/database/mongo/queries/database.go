@@ -25,7 +25,7 @@ type DatabaseQuery interface {
 	GetByQuery(query string, opts ...OptionsQuery) (databases []models.Database, err error)
 	GetTotal() (total int64, err error)
 	GetTotalByQuery(query string) (total int64, err error)
-	CreateOne(database models.Database) (newAccount *models.Database, err error)
+	CreateOne(database models.Database) (newDatabase *models.Database, err error)
 	UpdateInfoById(id primitive.ObjectID, request DatabaseUpdateInfoByIdRequest) error
 }
 
@@ -70,7 +70,7 @@ func (q *databaseQuery) GetById(id primitive.ObjectID, opts ...OptionsQuery) (*m
 	defer cancel()
 	if err := q.collection.FindOne(ctx, bson.M{"_id": id}, optFind).Decode(&data); err != nil {
 		if errors.Is(err, mongoDriver.ErrNoDocuments) {
-			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Account not found"})
+			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Database not found"})
 		}
 		logger.Error().Err(err).Str("function", "GetById").Str("functionInline", "q.collection.FindOne").Msg("databaseQuery")
 		return nil, response.NewError(fiber.StatusInternalServerError)
@@ -89,7 +89,7 @@ func (q *databaseQuery) GetByName(name string, opts ...OptionsQuery) (*models.Da
 	defer cancel()
 	if err := q.collection.FindOne(ctx, bson.M{"name": name}, optFind).Decode(&data); err != nil {
 		if errors.Is(err, mongoDriver.ErrNoDocuments) {
-			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Account not found"})
+			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Database not found"})
 		}
 		logger.Error().Err(err).Str("function", "GetByName").Str("functionInline", "q.collection.FindOne").Msg("databaseQuery")
 		return nil, response.NewError(fiber.StatusInternalServerError)
