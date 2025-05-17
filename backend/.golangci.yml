@@ -1,11 +1,12 @@
-linters-settings:
-  govet:
-    disable-all: true
-    enable:
-      - fieldalignment
+version: "2"
 
 linters:
-  disable-all: true
+  settings:
+    govet:
+      disable-all: true
+      enable:
+        - fieldalignment
+  default: none
   enable:
     - copyloopvar
     - forbidigo
