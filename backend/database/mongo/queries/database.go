@@ -21,9 +21,11 @@ import (
 type DatabaseQuery interface {
 	GetById(id primitive.ObjectID, opts ...OptionsQuery) (database *models.Database, err error)
 	GetByName(name string, opts ...OptionsQuery) (database *models.Database, err error)
-	CreateOne(database models.Database) (newAccount *models.Database, err error)
-	GetTotalByQuery(query string) (total int64, err error)
+	GetAll(opts ...OptionsQuery) (databases []models.Database, err error)
 	GetByQuery(query string, opts ...OptionsQuery) (databases []models.Database, err error)
+	GetTotal() (total int64, err error)
+	GetTotalByQuery(query string) (total int64, err error)
+	CreateOne(database models.Database) (newAccount *models.Database, err error)
 	UpdateInfoById(id primitive.ObjectID, request DatabaseUpdateInfoByIdRequest) error
 }
 
@@ -165,11 +167,51 @@ func (q *databaseQuery) UpdateInfoById(id primitive.ObjectID, request DatabaseUp
 		},
 	})
 	if err != nil {
-		logger.Error().Err(err).Str("function", "UpdateProfileById").Str("functionInline", "q.collection.UpdateByID").Msg("databaseQuery")
+		if mongoDriver.IsDuplicateKeyError(err) {
+			return response.NewError(fiber.StatusConflict, response.ErrorOptions{Data: respErr.ErrResourceConflict})
+		}
+		logger.Error().Err(err).Str("function", "UpdateInfoById").Str("functionInline", "q.collection.UpdateByID").Msg("databaseQuery")
 		return response.NewError(fiber.StatusInternalServerError)
 	}
 	if result.MatchedCount == 0 {
 		return response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: respErr.ErrResourceNotFound})
 	}
 	return nil
+}
+
+func (q *databaseQuery) GetTotal() (int64, error) {
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	result, err := q.collection.CountDocuments(ctx, bson.M{})
+	if err != nil {
+		logger.Error().Err(err).Str("function", "GetTotal").Str("functionInline", "q.collection.CountDocuments").Msg("databaseQuery")
+		return 0, response.NewError(fiber.StatusInternalServerError)
+	}
+	return result, nil
+}
+
+func (q *databaseQuery) GetAll(opts ...OptionsQuery) ([]models.Database, error) {
+	opt := NewOptions()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	optFind := &options.FindOptions{
+		Projection: opt.QueryOnlyField(),
+		Limit:      opt.QueryPaginationLimit(),
+		Skip:       opt.QueryPaginationSkip(),
+		Sort:       opt.QuerySort(),
+	}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	cursor, err := q.collection.Find(ctx, bson.M{}, optFind)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "GetAll").Str("functionInline", "q.collection.Find").Msg("databaseQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	data := make([]models.Database, 0)
+	if err = cursor.All(ctx, &data); err != nil {
+		logger.Error().Err(err).Str("function", "GetAll").Str("functionInline", "cursor.All").Msg("databaseQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	return data, nil
 }

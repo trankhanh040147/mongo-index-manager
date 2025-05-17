@@ -17,7 +17,7 @@ type DatabaseGetResponse struct {
 	Description string             `json:"description"`
 	Uri         string             `json:"uri"`
 	DBName      string             `json:"db_name"`
-	Id          primitive.ObjectID `json:"_id,omitempty"`
+	Id          primitive.ObjectID `json:"id"`
 }
 
 type DatabaseCreateBodyValidate struct {
@@ -58,7 +58,7 @@ type DatabaseListResponseItem struct {
 	Description string             `json:"description"`
 	Uri         string             `json:"uri"`
 	DBName      string             `json:"db_name"`
-	Id          primitive.ObjectID `json:"_id,omitempty"`
+	Id          primitive.ObjectID `json:"id"`
 }
 
 type DatabaseUpdateBodyValidate struct {

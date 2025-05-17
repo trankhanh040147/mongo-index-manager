@@ -72,13 +72,13 @@ func (ctrl *controller) Create(ctx *fiber.Ctx) error {
 	} else {
 		return response.NewError(fiber.StatusConflict, response.ErrorOptions{Data: respErr.ErrResourceConflict})
 	}
-	if requestBody.IsTestConnection {
+	if requestBody.IsTestConnection || requestBody.IsSyncIndex {
 		if err := mongodb.New().TestConnection(requestBody.Uri); err != nil {
 			logger.Error().Err(err).Str("function", "Create").Str("functionInline", "mongodb.New().TestConnection").Msg("database-controller")
 			return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot connect to database"})
 		}
+		// TODO: handle import indexes option
 	}
-	// TODO: handle import indexes option
 	database, err := databaseQuery.CreateOne(models.Database{
 		Name:        requestBody.Name,
 		Description: requestBody.Description,
@@ -105,30 +105,60 @@ func (ctrl *controller) List(ctx *fiber.Ctx) error {
 		return err
 	}
 	var (
+		err           error
+		databases     = make([]models.Database, 0)
 		errorChan     = make(chan error, 1)
 		totalChan     = make(chan int64, 1)
 		queryOption   = queries.NewOptions()
 		databaseQuery = queries.NewDatabase(ctx.Context())
 		pagination    = request.NewPagination(requestBody.Limit, requestBody.Page)
+		result        = make([]serializers.DatabaseListResponseItem, 0)
 	)
-	go func() {
-		total, err := databaseQuery.GetTotalByQuery(requestBody.Query)
-		errorChan <- err
-		totalChan <- total
-	}()
 	queryOption.SetPagination(pagination)
 	queryOption.AddSortKey(map[string]int{
 		"_id": queries.SortTypeDesc,
 	})
 	queryOption.SetOnlyFields("created_at", "updated_at", "name", "description", "uri", "db_name", "_id")
-	databases, err := databaseQuery.GetByQuery(requestBody.Query, queryOption)
+	if requestBody.Query != "" {
+		if id, _ := primitive.ObjectIDFromHex(requestBody.Query); !id.IsZero() {
+			database, err := databaseQuery.GetById(id, queryOption)
+			if err != nil {
+				if e := new(response.Error); errors.As(err, &e) && e.Code == fiber.StatusNotFound {
+					return response.NewArrayWithPagination(ctx, result, pagination)
+				}
+				return err
+			}
+			return response.NewArrayWithPagination(ctx, []serializers.DatabaseListResponseItem{{
+				CreatedAt:   database.CreatedAt,
+				UpdatedAt:   database.UpdatedAt,
+				Name:        database.Name,
+				Description: database.Description,
+				Uri:         database.Uri,
+				DBName:      database.DBName,
+				Id:          database.Id,
+			}}, pagination)
+		}
+		go func() {
+			total, err := databaseQuery.GetTotalByQuery(requestBody.Query)
+			errorChan <- err
+			totalChan <- total
+		}()
+		databases, err = databaseQuery.GetByQuery(requestBody.Query, queryOption)
+	} else {
+		go func() {
+			total, err := databaseQuery.GetTotal()
+			errorChan <- err
+			totalChan <- total
+		}()
+		databases, err = databaseQuery.GetAll(queryOption)
+	}
 	if err != nil {
 		return err
 	}
 	if err = <-errorChan; err != nil {
 		return err
 	}
-	result := make([]serializers.DatabaseListResponseItem, len(databases))
+	result = make([]serializers.DatabaseListResponseItem, len(databases))
 	for i, database := range databases {
 		result[i].CreatedAt = database.CreatedAt
 		result[i].UpdatedAt = database.UpdatedAt
@@ -179,8 +209,8 @@ func (ctrl *controller) Update(ctx *fiber.Ctx) error {
 			logger.Error().Err(err).Str("function", "Update").Str("functionInline", "mongodb.New().TestConnection").Msg("database-controller")
 			return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot connect to database"})
 		}
+		// TODO: handle sync indexes option
 	}
-	// TODO: handle import indexes option
 	if err = databaseQuery.UpdateInfoById(id, queries.DatabaseUpdateInfoByIdRequest{
 		Name:        requestBody.Name,
 		Description: requestBody.Description,

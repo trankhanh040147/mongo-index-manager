@@ -28,5 +28,5 @@ func (r *database) V1() {
 	r.router.Get("/:id", r.controller.Get)
 	r.router.Post("/", r.controller.Create)
 	r.router.Post("/list", r.controller.List)
-	r.router.Post("/:id/update", r.controller.Update)
+	r.router.Put("/:id/", r.controller.Update)
 }
