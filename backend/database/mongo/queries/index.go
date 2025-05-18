@@ -3,6 +3,7 @@ package queries
 import (
 	"context"
 	"errors"
+	"regexp"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -21,6 +22,10 @@ type IndexQuery interface {
 	GetById(id primitive.ObjectID, opts ...OptionsQuery) (index *models.Index, err error)
 	GetByNameOrKeySignature(keySignature, name string, opts ...OptionsQuery) (index *models.Index, err error)
 	CreateOne(index models.Index) (newIndex *models.Index, err error)
+	GetByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string, opts ...OptionsQuery) (indexes []models.Index, err error)
+	GetByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string, opts ...OptionsQuery) (indexes []models.Index, err error)
+	GetTotalByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string) (total int64, err error)
+	GetTotalByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string) (total int64, err error)
 }
 
 type indexQuery struct {
@@ -92,4 +97,94 @@ func (q *indexQuery) GetByNameOrKeySignature(keySignature, name string, opts ...
 		return nil, response.NewError(fiber.StatusInternalServerError)
 	}
 	return &data, nil
+}
+
+func (q *indexQuery) GetTotalByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string) (int64, error) {
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	regexQuery := primitive.Regex{Pattern: regexp.QuoteMeta(query), Options: "i"}
+	filter := bson.M{"database_id": databaseId, "collection": collection}
+	if query != "" {
+		filter["$or"] = []bson.M{
+			{"name": regexQuery},
+			{"key_signature": regexQuery},
+		}
+	}
+	result, err := q.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "GetTotalByDatabaseIdCollectionAndQuery").Str("functionInline", "q.collection.CountDocuments").Msg("indexQuery")
+		return 0, response.NewError(fiber.StatusInternalServerError)
+	}
+	return result, nil
+}
+
+func (q *indexQuery) GetByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string, opts ...OptionsQuery) ([]models.Index, error) {
+	opt := NewOptions()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	optFind := &options.FindOptions{
+		Projection: opt.QueryOnlyField(),
+		Limit:      opt.QueryPaginationLimit(),
+		Skip:       opt.QueryPaginationSkip(),
+		Sort:       opt.QuerySort(),
+	}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	regexQuery := primitive.Regex{Pattern: regexp.QuoteMeta(query), Options: "i"}
+	filter := bson.M{"database_id": databaseId, "collection": collection}
+	if query != "" {
+		filter["$or"] = []bson.M{
+			{"name": regexQuery},
+			{"key_signature": regexQuery},
+		}
+	}
+	cursor, err := q.collection.Find(ctx, filter, optFind)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "GetByDatabaseIdCollectionAndQuery").Str("functionInline", "q.collection.Find").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	data := make([]models.Index, 0)
+	if err = cursor.All(ctx, &data); err != nil {
+		logger.Error().Err(err).Str("function", "GetByDatabaseIdCollectionAndQuery").Str("functionInline", "cursor.All").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	return data, nil
+}
+
+func (q *indexQuery) GetTotalByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string) (int64, error) {
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	result, err := q.collection.CountDocuments(ctx, bson.M{"database_id": databaseId, "collection": collection})
+	if err != nil {
+		logger.Error().Err(err).Str("function", "GetTotalByDatabaseIdAndCollection").Str("functionInline", "q.collection.CountDocuments").Msg("indexQuery")
+		return 0, response.NewError(fiber.StatusInternalServerError)
+	}
+	return result, nil
+}
+
+func (q *indexQuery) GetByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string, opts ...OptionsQuery) ([]models.Index, error) {
+	opt := NewOptions()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	optFind := &options.FindOptions{
+		Projection: opt.QueryOnlyField(),
+		Limit:      opt.QueryPaginationLimit(),
+		Skip:       opt.QueryPaginationSkip(),
+		Sort:       opt.QuerySort(),
+	}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	cursor, err := q.collection.Find(ctx, bson.M{"database_id": databaseId, "collection": collection}, optFind)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "GetByDatabaseIdAndCollection").Str("functionInline", "q.collection.Find").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	data := make([]models.Index, 0)
+	if err = cursor.All(ctx, &data); err != nil {
+		logger.Error().Err(err).Str("function", "GetByDatabaseIdAndCollection").Str("functionInline", "cursor.All").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	return data, nil
 }

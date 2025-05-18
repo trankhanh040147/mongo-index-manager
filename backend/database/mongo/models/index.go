@@ -15,8 +15,8 @@ type Index struct {
 	Name         string             `bson:"name"`
 	KeySignature string             `bson:"key_signature"`
 	Keys         []IndexKey         `bson:"keys"`
-	Id           primitive.ObjectID `bson:"_id,omitempty"`
 	DatabaseId   primitive.ObjectID `bson:"database_id"`
+	Id           primitive.ObjectID `bson:"_id,omitempty"`
 }
 
 type IndexOption struct {
@@ -41,7 +41,7 @@ func (m *Index) GetKeySignature() string {
 		keyString += "unique_"
 	}
 	if m.Options.ExpireAfterSeconds != nil {
-		keyString += fmt.Sprintf("expire_%d", *m.Options.ExpireAfterSeconds)
+		keyString += fmt.Sprintf("expireAfterSeconds_%d", *m.Options.ExpireAfterSeconds)
 	}
 	return keyString
 }

@@ -26,4 +26,6 @@ func NewIndex(router fiber.Router) Index {
 func (r *index) V1() {
 	r.router.Use(authMiddleware.AccessToken)
 	r.router.Post("/", r.controller.Create)
+	r.router.Get("/:id", r.controller.Get)
+	r.router.Post("/list-by-collection", r.controller.ListByCollection)
 }
