@@ -2,6 +2,8 @@ package index
 
 import (
 	"errors"
+	"reflect"
+	"slices"
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -18,6 +20,7 @@ type Controller interface {
 	Create(ctx *fiber.Ctx) error
 	Get(ctx *fiber.Ctx) error
 	ListByCollection(ctx *fiber.Ctx) error
+	Update(ctx *fiber.Ctx) error
 }
 
 type controller struct {
@@ -50,9 +53,11 @@ func (ctrl *controller) Create(ctx *fiber.Ctx) error {
 		Keys:       make([]models.IndexKey, len(requestBody.Keys)),
 		DatabaseId: requestBody.DatabaseId,
 	}
+	keyFields := make([]string, len(index.Keys))
 	for i, key := range requestBody.Keys {
 		index.Keys[i].Field = key.Field
 		index.Keys[i].Value = key.Value
+		keyFields[i] = key.Field
 	}
 	index.KeySignature = index.GetKeySignature()
 	if index.Name == "" {
@@ -66,6 +71,15 @@ func (ctrl *controller) Create(ctx *fiber.Ctx) error {
 		}
 	} else {
 		return response.New(ctx, response.Options{Code: fiber.StatusConflict, Data: respErr.ErrResourceConflict})
+	}
+	if requestBody.Options.IsUnique {
+		if _, err := indexQuery.GetByKeyFieldsCollectionAndIsUnique(keyFields, requestBody.Collection, true, queryOption); err != nil {
+			if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
+				return err
+			}
+		} else {
+			return response.New(ctx, response.Options{Code: fiber.StatusConflict, Data: respErr.ErrResourceConflict})
+		}
 	}
 	newIndex, err := indexQuery.CreateOne(*index)
 	if err != nil {
@@ -200,4 +214,77 @@ func (ctrl *controller) ListByCollection(ctx *fiber.Ctx) error {
 	}
 	pagination.SetTotal(<-totalChan)
 	return response.NewArrayWithPagination(ctx, result, pagination)
+}
+
+func (ctrl *controller) Update(ctx *fiber.Ctx) error {
+	id, err := primitive.ObjectIDFromHex(ctx.Params("id"))
+	if err != nil {
+		return response.New(ctx, response.Options{Code: fiber.StatusNotFound, Data: respErr.ErrResourceNotFound})
+	}
+	var requestBody serializers.IndexUpdateBodyValidate
+	if err = ctx.BodyParser(&requestBody); err != nil {
+		return response.New(ctx, response.Options{Code: fiber.StatusBadRequest, Data: respErr.ErrFieldWrongType})
+	}
+	if err = requestBody.Validate(); err != nil {
+		return err
+	}
+	queryOption := queries.NewOptions()
+	indexQuery := queries.NewIndex(ctx.Context())
+	queryOption.SetOnlyFields("name", "keys", "collection", "options", "key_signature")
+	index, err := indexQuery.GetById(id, queryOption)
+	if err != nil {
+		return err
+	}
+	indexUpdate := models.Index{
+		Name: requestBody.Name,
+		Options: models.IndexOption{
+			ExpireAfterSeconds: requestBody.Options.ExpireAfterSeconds,
+			IsUnique:           requestBody.Options.IsUnique,
+		},
+		Keys: make([]models.IndexKey, len(requestBody.Keys)),
+	}
+	isSameKeyFields := true
+	listKeyFieldsUpdate := make([]string, len(requestBody.Keys))
+	mapKeyField := make(map[string]struct{}, len(index.Keys))
+	for _, key := range index.Keys {
+		mapKeyField[key.Field] = struct{}{}
+	}
+	for i, key := range requestBody.Keys {
+		indexUpdate.Keys[i].Field = key.Field
+		indexUpdate.Keys[i].Value = key.Value
+		listKeyFieldsUpdate[i] = key.Field
+		if _, exists := mapKeyField[key.Field]; !exists {
+			isSameKeyFields = false
+		}
+	}
+	if index.Name == requestBody.Name && reflect.DeepEqual(index.Options, indexUpdate.Options) && slices.Equal(index.Keys, indexUpdate.Keys) {
+		return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
+	}
+	indexUpdate.KeySignature = indexUpdate.GetKeySignature()
+	if indexUpdate.Name == "" {
+		indexUpdate.Name = indexUpdate.KeySignature
+	}
+	queryOption.SetOnlyFields("_id")
+	if index.Name != indexUpdate.Name || index.KeySignature != indexUpdate.KeySignature {
+		if _, err = indexQuery.GetByNameOrKeySignature(indexUpdate.Name, indexUpdate.KeySignature, queryOption); err != nil {
+			if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
+				return err
+			}
+		} else {
+			return response.NewError(fiber.StatusConflict, response.ErrorOptions{Data: respErr.ErrResourceConflict})
+		}
+	}
+	if requestBody.Options.IsUnique && !isSameKeyFields {
+		if _, err = indexQuery.GetByKeyFieldsCollectionAndIsUnique(listKeyFieldsUpdate, index.Collection, true, queryOption); err != nil {
+			if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
+				return err
+			}
+		} else {
+			return response.New(ctx, response.Options{Code: fiber.StatusConflict, Data: respErr.ErrResourceConflict})
+		}
+	}
+	if err = indexQuery.UpdateNameKeySignatureOptionsKeysById(id, indexUpdate.Name, indexUpdate.KeySignature, indexUpdate.Options, indexUpdate.Keys); err != nil {
+		return err
+	}
+	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
 }

@@ -26,6 +26,8 @@ type IndexQuery interface {
 	GetByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string, opts ...OptionsQuery) (indexes []models.Index, err error)
 	GetTotalByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string) (total int64, err error)
 	GetTotalByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string) (total int64, err error)
+	GetByKeyFieldsCollectionAndIsUnique(keyFields []string, collection string, isUnique bool, opts ...OptionsQuery) (index *models.Index, err error)
+	UpdateNameKeySignatureOptionsKeysById(id primitive.ObjectID, name, keySignature string, indexOpt models.IndexOption, keys []models.IndexKey) error
 }
 
 type indexQuery struct {
@@ -187,4 +189,52 @@ func (q *indexQuery) GetByDatabaseIdAndCollection(databaseId primitive.ObjectID,
 		return nil, response.NewError(fiber.StatusInternalServerError)
 	}
 	return data, nil
+}
+
+func (q *indexQuery) GetByKeyFieldsCollectionAndIsUnique(keyFields []string, collection string, isUnique bool, opts ...OptionsQuery) (*models.Index, error) {
+	opt := NewOptions()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	var data models.Index
+	optFind := &options.FindOneOptions{Projection: opt.QueryOnlyField()}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	if err := q.collection.FindOne(ctx, bson.M{
+		"collection":       collection,
+		"option.is_unique": isUnique,
+		"keys.field":       bson.M{"$all": keyFields},
+	}, optFind).Decode(&data); err != nil {
+		if errors.Is(err, mongoDriver.ErrNoDocuments) {
+			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Index not found"})
+		}
+		logger.Error().Err(err).Str("function", "GetByKeyFieldsCollectionAndIsUnique").Str("functionInline", "q.collection.FindOne").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	return &data, nil
+}
+
+func (q *indexQuery) UpdateNameKeySignatureOptionsKeysById(id primitive.ObjectID, name, keySignature string, indexOpt models.IndexOption, keys []models.IndexKey) error {
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	result, err := q.collection.UpdateByID(ctx, id, bson.M{
+		"$set": bson.M{
+			"updated_at":    time.Now(),
+			"name":          name,
+			"key_signature": keySignature,
+			"options":       indexOpt,
+			"keys":          keys,
+		},
+	})
+	if err != nil {
+		if mongoDriver.IsDuplicateKeyError(err) {
+			return response.NewError(fiber.StatusConflict, response.ErrorOptions{Data: respErr.ErrResourceConflict})
+		}
+		logger.Error().Err(err).Str("function", "UpdateNameKeySignatureOptionsKeysById").Str("functionInline", "q.collection.UpdateByID").Msg("indexQuery")
+		return response.NewError(fiber.StatusInternalServerError)
+	}
+	if result.MatchedCount == 0 {
+		return response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: respErr.ErrResourceNotFound})
+	}
+	return nil
 }

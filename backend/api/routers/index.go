@@ -28,4 +28,5 @@ func (r *index) V1() {
 	r.router.Post("/", r.controller.Create)
 	r.router.Get("/:id", r.controller.Get)
 	r.router.Post("/list-by-collection", r.controller.ListByCollection)
+	r.router.Put("/:id/update", r.controller.Update)
 }

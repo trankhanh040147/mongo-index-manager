@@ -98,3 +98,30 @@ type IndexListByCollectionResponseKey struct {
 	Field string `json:"field"`
 	Value int32  `json:"value"`
 }
+
+type IndexUpdateBodyValidate struct {
+	Name    string            `json:"name" validate:"omitempty,max=100"`
+	Options IndexUpdateOption `json:"options" validate:"required"`
+	Keys    []IndexUpdateKey  `json:"keys" validate:"required,min=1,unique=Field,dive"`
+}
+
+type IndexUpdateOption struct {
+	ExpireAfterSeconds *int32 `json:"expire_after_seconds" validate:"omitempty,gte=0"`
+	IsUnique           bool   `json:"is_unique" validate:"omitempty"`
+}
+
+type IndexUpdateKey struct {
+	Field string `json:"field" validate:"required"`
+	Value int32  `json:"value" validate:"required,oneof=1 -1"`
+}
+
+func (v *IndexUpdateBodyValidate) Validate() error {
+	validateEngine := validator.GetValidateEngine()
+	if err := validateEngine.Struct(v); err != nil {
+		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: validator.ParseValidateError(err)})
+	}
+	if v.Options.ExpireAfterSeconds != nil && len(v.Keys) > 1 {
+		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"keys": "ttl_compound"}})
+	}
+	return nil
+}
