@@ -125,3 +125,16 @@ func (v *IndexUpdateBodyValidate) Validate() error {
 	}
 	return nil
 }
+
+type IndexCompareByCollectionsValidate struct {
+	Collections []string           `json:"collections" validate:"required,min=1,unique"`
+	DatabaseId  primitive.ObjectID `json:"database_id" validate:"required"`
+}
+
+func (v *IndexCompareByCollectionsValidate) Validate() error {
+	validateEngine := validator.GetValidateEngine()
+	if err := validateEngine.Struct(v); err != nil {
+		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: validator.ParseValidateError(err)})
+	}
+	return nil
+}

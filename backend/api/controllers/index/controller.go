@@ -9,12 +9,16 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"doctor-manager-api/api/serializers"
+	"doctor-manager-api/common/logging"
 	"doctor-manager-api/common/request"
 	"doctor-manager-api/common/response"
 	respErr "doctor-manager-api/common/response/error"
 	"doctor-manager-api/database/mongo/models"
 	"doctor-manager-api/database/mongo/queries"
+	"doctor-manager-api/utilities/mongodb"
 )
+
+var logger = logging.GetLogger()
 
 type Controller interface {
 	Create(ctx *fiber.Ctx) error
@@ -22,6 +26,7 @@ type Controller interface {
 	ListByCollection(ctx *fiber.Ctx) error
 	Update(ctx *fiber.Ctx) error
 	Delete(ctx *fiber.Ctx) error
+	CompareByCollections(ctx *fiber.Ctx) error
 }
 
 type controller struct {
@@ -309,5 +314,39 @@ func (ctrl *controller) Delete(ctx *fiber.Ctx) error {
 			return err
 		}
 	}
+	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
+}
+
+func (ctrl *controller) CompareByCollections(ctx *fiber.Ctx) error {
+	var requestBody serializers.IndexCompareByCollectionsValidate
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return response.New(ctx, response.Options{Code: fiber.StatusBadRequest, Data: respErr.ErrFieldWrongType})
+	}
+	if err := requestBody.Validate(); err != nil {
+		return err
+	}
+	queryOption := queries.NewOptions()
+	queryOption.SetOnlyFields("uri", "db_name")
+	database, err := queries.NewDatabase(ctx.Context()).GetById(requestBody.DatabaseId, queryOption)
+	if err != nil {
+		return err
+	}
+	indexQuery := queries.NewIndex(ctx.Context())
+	queryOption.SetOnlyFields("options", "keys")
+	indexes, err := indexQuery.GetByDatabaseIdAndCollections(requestBody.DatabaseId, requestBody.Collections, queryOption)
+	if err != nil {
+		return err
+	}
+	dbClient, err := mongodb.New(database.Uri)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "mongodb.New").Msg("index-controller")
+		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot connect to database"})
+	}
+	clientIndexes, err := dbClient.GetIndexesByDbNameAndCollections(database.DBName, requestBody.Collections)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "dbClient.GetIndexesByDbNameAndCollections").Msg("index-controller")
+		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot get indexes from database"})
+	}
+	// todo: compare indexes between two
 	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
 }

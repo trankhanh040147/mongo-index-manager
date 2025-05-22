@@ -73,8 +73,8 @@ func (ctrl *controller) Create(ctx *fiber.Ctx) error {
 		return response.NewError(fiber.StatusConflict, response.ErrorOptions{Data: respErr.ErrResourceConflict})
 	}
 	if requestBody.IsTestConnection || requestBody.IsSyncIndex {
-		if err := mongodb.New().TestConnection(requestBody.Uri); err != nil {
-			logger.Error().Err(err).Str("function", "Create").Str("functionInline", "mongodb.New().TestConnection").Msg("database-controller")
+		if _, err := mongodb.New(requestBody.Uri); err != nil {
+			logger.Error().Err(err).Str("function", "Create").Str("functionInline", "mongodb.New").Msg("database-controller")
 			return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot connect to database"})
 		}
 		// TODO: handle import indexes option
@@ -205,8 +205,8 @@ func (ctrl *controller) Update(ctx *fiber.Ctx) error {
 		}
 	}
 	if (database.Uri != requestBody.Uri && requestBody.IsTestConnection) || requestBody.IsSyncIndex {
-		if err = mongodb.New().TestConnection(requestBody.Uri); err != nil {
-			logger.Error().Err(err).Str("function", "Update").Str("functionInline", "mongodb.New().TestConnection").Msg("database-controller")
+		if _, err = mongodb.New(requestBody.Uri); err != nil {
+			logger.Error().Err(err).Str("function", "Update").Str("functionInline", "mongodb.New").Msg("database-controller")
 			return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot connect to database"})
 		}
 		// TODO: handle sync indexes option
