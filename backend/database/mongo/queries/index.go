@@ -20,13 +20,13 @@ import (
 
 type IndexQuery interface {
 	GetById(id primitive.ObjectID, opts ...OptionsQuery) (index *models.Index, err error)
-	GetByNameOrKeySignature(keySignature, name string, opts ...OptionsQuery) (index *models.Index, err error)
+	GetByDatabaseIdCollectionWithNameOrSignature(databaseId primitive.ObjectID, collection string, keySignature, name string, opts ...OptionsQuery) (index *models.Index, err error)
 	CreateOne(index models.Index) (newIndex *models.Index, err error)
 	GetByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string, opts ...OptionsQuery) (indexes []models.Index, err error)
 	GetByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string, opts ...OptionsQuery) (indexes []models.Index, err error)
 	GetTotalByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string) (total int64, err error)
 	GetTotalByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string) (total int64, err error)
-	GetByKeyFieldsCollectionAndIsUnique(keyFields []string, collection string, isUnique bool, opts ...OptionsQuery) (index *models.Index, err error)
+	GetByDatabaseIdCollectionKeyFieldsAndIsUnique(databaseId primitive.ObjectID, collection string, keyFields []string, isUnique bool, opts ...OptionsQuery) (index *models.Index, err error)
 	UpdateNameKeySignatureOptionsKeysById(id primitive.ObjectID, name, keySignature string, indexOpt models.IndexOption, keys []models.IndexKey) error
 }
 
@@ -79,7 +79,7 @@ func (q *indexQuery) GetById(id primitive.ObjectID, opts ...OptionsQuery) (*mode
 	return &data, nil
 }
 
-func (q *indexQuery) GetByNameOrKeySignature(keySignature, name string, opts ...OptionsQuery) (*models.Index, error) {
+func (q *indexQuery) GetByDatabaseIdCollectionWithNameOrSignature(databaseId primitive.ObjectID, collection string, keySignature, name string, opts ...OptionsQuery) (*models.Index, error) {
 	opt := NewOptions()
 	if len(opts) > 0 {
 		opt = opts[0]
@@ -88,14 +88,17 @@ func (q *indexQuery) GetByNameOrKeySignature(keySignature, name string, opts ...
 	optFind := &options.FindOneOptions{Projection: opt.QueryOnlyField()}
 	ctx, cancel := timeoutFunc(q.context)
 	defer cancel()
-	if err := q.collection.FindOne(ctx, bson.M{"$or": []bson.M{
-		{"key_signature": keySignature},
-		{"name": name},
-	}}, optFind).Decode(&data); err != nil {
+	if err := q.collection.FindOne(ctx, bson.M{
+		"database_id": databaseId,
+		"collection":  collection,
+		"$or": []bson.M{
+			{"key_signature": keySignature},
+			{"name": name},
+		}}, optFind).Decode(&data); err != nil {
 		if errors.Is(err, mongoDriver.ErrNoDocuments) {
 			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Index not found"})
 		}
-		logger.Error().Err(err).Str("function", "GetByNameOrKeySignature").Str("functionInline", "q.collection.FindOne").Msg("indexQuery")
+		logger.Error().Err(err).Str("function", "GetByDatabaseIdCollectionWithNameOrSignature").Str("functionInline", "q.collection.FindOne").Msg("indexQuery")
 		return nil, response.NewError(fiber.StatusInternalServerError)
 	}
 	return &data, nil
@@ -191,7 +194,7 @@ func (q *indexQuery) GetByDatabaseIdAndCollection(databaseId primitive.ObjectID,
 	return data, nil
 }
 
-func (q *indexQuery) GetByKeyFieldsCollectionAndIsUnique(keyFields []string, collection string, isUnique bool, opts ...OptionsQuery) (*models.Index, error) {
+func (q *indexQuery) GetByDatabaseIdCollectionKeyFieldsAndIsUnique(databaseId primitive.ObjectID, collection string, keyFields []string, isUnique bool, opts ...OptionsQuery) (*models.Index, error) {
 	opt := NewOptions()
 	if len(opts) > 0 {
 		opt = opts[0]
@@ -201,14 +204,16 @@ func (q *indexQuery) GetByKeyFieldsCollectionAndIsUnique(keyFields []string, col
 	ctx, cancel := timeoutFunc(q.context)
 	defer cancel()
 	if err := q.collection.FindOne(ctx, bson.M{
-		"collection":       collection,
-		"option.is_unique": isUnique,
-		"keys.field":       bson.M{"$all": keyFields},
+		"database_id":       databaseId,
+		"collection":        collection,
+		"options.is_unique": isUnique,
+		"keys.field":        bson.M{"$all": keyFields},
+		"keys":              bson.M{"$size": len(keyFields)},
 	}, optFind).Decode(&data); err != nil {
 		if errors.Is(err, mongoDriver.ErrNoDocuments) {
 			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Index not found"})
 		}
-		logger.Error().Err(err).Str("function", "GetByKeyFieldsCollectionAndIsUnique").Str("functionInline", "q.collection.FindOne").Msg("indexQuery")
+		logger.Error().Err(err).Str("function", "GetByDatabaseIdCollectionKeyFieldsAndIsUnique").Str("functionInline", "q.collection.FindOne").Msg("indexQuery")
 		return nil, response.NewError(fiber.StatusInternalServerError)
 	}
 	return &data, nil

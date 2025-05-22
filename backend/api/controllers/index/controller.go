@@ -65,7 +65,7 @@ func (ctrl *controller) Create(ctx *fiber.Ctx) error {
 	}
 	indexQuery := queries.NewIndex(ctx.Context())
 	queryOption.SetOnlyFields("_id")
-	if _, err := indexQuery.GetByNameOrKeySignature(index.KeySignature, index.Name, queryOption); err != nil {
+	if _, err := indexQuery.GetByDatabaseIdCollectionWithNameOrSignature(requestBody.DatabaseId, requestBody.Collection, index.KeySignature, index.Name, queryOption); err != nil {
 		if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
 			return err
 		}
@@ -73,7 +73,7 @@ func (ctrl *controller) Create(ctx *fiber.Ctx) error {
 		return response.New(ctx, response.Options{Code: fiber.StatusConflict, Data: respErr.ErrResourceConflict})
 	}
 	if requestBody.Options.IsUnique {
-		if _, err := indexQuery.GetByKeyFieldsCollectionAndIsUnique(keyFields, requestBody.Collection, true, queryOption); err != nil {
+		if _, err := indexQuery.GetByDatabaseIdCollectionKeyFieldsAndIsUnique(requestBody.DatabaseId, requestBody.Collection, keyFields, true, queryOption); err != nil {
 			if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
 				return err
 			}
@@ -230,7 +230,7 @@ func (ctrl *controller) Update(ctx *fiber.Ctx) error {
 	}
 	queryOption := queries.NewOptions()
 	indexQuery := queries.NewIndex(ctx.Context())
-	queryOption.SetOnlyFields("name", "keys", "collection", "options", "key_signature")
+	queryOption.SetOnlyFields("name", "keys", "collection", "options", "key_signature", "database_id", "collection")
 	index, err := indexQuery.GetById(id, queryOption)
 	if err != nil {
 		return err
@@ -266,7 +266,7 @@ func (ctrl *controller) Update(ctx *fiber.Ctx) error {
 	}
 	queryOption.SetOnlyFields("_id")
 	if index.Name != indexUpdate.Name || index.KeySignature != indexUpdate.KeySignature {
-		if _, err = indexQuery.GetByNameOrKeySignature(indexUpdate.Name, indexUpdate.KeySignature, queryOption); err != nil {
+		if _, err = indexQuery.GetByDatabaseIdCollectionWithNameOrSignature(index.DatabaseId, index.Collection, indexUpdate.Name, indexUpdate.KeySignature, queryOption); err != nil {
 			if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
 				return err
 			}
@@ -275,7 +275,7 @@ func (ctrl *controller) Update(ctx *fiber.Ctx) error {
 		}
 	}
 	if requestBody.Options.IsUnique && !isSameKeyFields {
-		if _, err = indexQuery.GetByKeyFieldsCollectionAndIsUnique(listKeyFieldsUpdate, index.Collection, true, queryOption); err != nil {
+		if _, err = indexQuery.GetByDatabaseIdCollectionKeyFieldsAndIsUnique(index.DatabaseId, index.Collection, listKeyFieldsUpdate, true, queryOption); err != nil {
 			if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
 				return err
 			}
