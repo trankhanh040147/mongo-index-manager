@@ -21,6 +21,7 @@ type Controller interface {
 	Get(ctx *fiber.Ctx) error
 	ListByCollection(ctx *fiber.Ctx) error
 	Update(ctx *fiber.Ctx) error
+	Delete(ctx *fiber.Ctx) error
 }
 
 type controller struct {
@@ -285,6 +286,28 @@ func (ctrl *controller) Update(ctx *fiber.Ctx) error {
 	}
 	if err = indexQuery.UpdateNameKeySignatureOptionsKeysById(id, indexUpdate.Name, indexUpdate.KeySignature, indexUpdate.Options, indexUpdate.Keys); err != nil {
 		return err
+	}
+	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
+}
+
+func (ctrl *controller) Delete(ctx *fiber.Ctx) error {
+	id, err := primitive.ObjectIDFromHex(ctx.Params("id"))
+	if err != nil {
+		return response.New(ctx, response.Options{Code: fiber.StatusNotFound, Data: respErr.ErrResourceNotFound})
+	}
+	queryOption := queries.NewOptions()
+	indexQuery := queries.NewIndex(ctx.Context())
+	queryOption.SetOnlyFields("_id")
+	if _, err = indexQuery.GetById(id, queryOption); err != nil {
+		if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
+			return err
+		}
+		return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
+	}
+	if err = indexQuery.DeleteById(id); err != nil {
+		if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
+			return err
+		}
 	}
 	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
 }

@@ -21,13 +21,14 @@ import (
 type IndexQuery interface {
 	GetById(id primitive.ObjectID, opts ...OptionsQuery) (index *models.Index, err error)
 	GetByDatabaseIdCollectionWithNameOrSignature(databaseId primitive.ObjectID, collection string, keySignature, name string, opts ...OptionsQuery) (index *models.Index, err error)
-	CreateOne(index models.Index) (newIndex *models.Index, err error)
 	GetByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string, opts ...OptionsQuery) (indexes []models.Index, err error)
 	GetByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string, opts ...OptionsQuery) (indexes []models.Index, err error)
 	GetTotalByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string) (total int64, err error)
 	GetTotalByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string) (total int64, err error)
 	GetByDatabaseIdCollectionKeyFieldsAndIsUnique(databaseId primitive.ObjectID, collection string, keyFields []string, isUnique bool, opts ...OptionsQuery) (index *models.Index, err error)
+	CreateOne(index models.Index) (newIndex *models.Index, err error)
 	UpdateNameKeySignatureOptionsKeysById(id primitive.ObjectID, name, keySignature string, indexOpt models.IndexOption, keys []models.IndexKey) error
+	DeleteById(id primitive.ObjectID) error
 }
 
 type indexQuery struct {
@@ -239,6 +240,20 @@ func (q *indexQuery) UpdateNameKeySignatureOptionsKeysById(id primitive.ObjectID
 		return response.NewError(fiber.StatusInternalServerError)
 	}
 	if result.MatchedCount == 0 {
+		return response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: respErr.ErrResourceNotFound})
+	}
+	return nil
+}
+
+func (q *indexQuery) DeleteById(id primitive.ObjectID) error {
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	result, err := q.collection.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		logger.Error().Err(err).Str("function", "DeleteById").Str("functionInline", "q.collection.DeleteOne").Msg("indexQuery")
+		return response.NewError(fiber.StatusInternalServerError)
+	}
+	if result.DeletedCount == 0 {
 		return response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: respErr.ErrResourceNotFound})
 	}
 	return nil
