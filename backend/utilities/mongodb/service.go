@@ -26,11 +26,11 @@ func (s *service) TestConnection(uri string) error {
 	return nil
 }
 
-func (s *service) GetIndexesByDbNameAndCollections(dbName string, collections []string) ([]mongo.IndexModel, error) {
+func (s *service) GetIndexesByDbNameAndCollections(dbName string, collections []string) ([]Index, error) {
 	if len(collections) == 0 {
 		return nil, nil
 	}
-	var allIndexes []mongo.IndexModel
+	var indexes []Index
 	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
 	defer cancel()
 	for _, collName := range collections {
@@ -50,15 +50,39 @@ func (s *service) GetIndexesByDbNameAndCollections(dbName string, collections []
 			if !ok {
 				continue
 			}
-			indexModel := mongo.IndexModel{
-				Keys: keys,
+			index := Index{
+				Keys: make([]IndexKey, 0, len(keys)),
+				Options: IndexOption{
+					ExpireAfterSeconds: nil,
+					IsUnique:           false,
+				},
+				Collection: collName,
 			}
-			if optionsDoc, ok := indexDoc["unique"].(bool); ok {
-				indexModel.Options = options.Index()
-				indexModel.Options.SetUnique(optionsDoc)
+			isDefault := false
+			for k, v := range keys {
+				if k == "_id" {
+					isDefault = true
+					break
+				}
+				index.Keys = append(index.Keys, IndexKey{
+					Field: k,
+					Value: v.(int32),
+				})
 			}
-			// todo: get Expire at
-			allIndexes = append(allIndexes, indexModel)
+			if isDefault {
+				continue
+			}
+			if isUnique, ok := indexDoc["unique"].(bool); ok {
+				index.Options.IsUnique = isUnique
+			}
+			if expires, ok := indexDoc["expireAfterSeconds"].(int32); ok {
+				index.Options.ExpireAfterSeconds = &expires
+			}
+			if name, ok := indexDoc["name"].(string); ok {
+				index.Name = name
+			}
+			index.KeySignature = index.GetKeySignature()
+			indexes = append(indexes, index)
 		}
 		if err = cursor.Err(); err != nil {
 			logger.Fatal().Err(err).Str("collection", collName).Str("function", "GetIndexesByDbNameAndCollections").Str("functionInline", "cursor.Err").Msg("mongodb")
@@ -68,5 +92,5 @@ func (s *service) GetIndexesByDbNameAndCollections(dbName string, collections []
 			logger.Fatal().Err(err).Str("collection", collName).Str("function", "GetIndexesByDbNameAndCollections").Str("functionInline", "cursor.Close").Msg("mongodb")
 		}
 	}
-	return allIndexes, nil
+	return indexes, nil
 }

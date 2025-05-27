@@ -332,11 +332,19 @@ func (ctrl *controller) CompareByCollections(ctx *fiber.Ctx) error {
 		return err
 	}
 	indexQuery := queries.NewIndex(ctx.Context())
-	queryOption.SetOnlyFields("options", "keys")
+	queryOption.SetOnlyFields("options", "keys", "key_signature", "collection", "name")
 	indexes, err := indexQuery.GetByDatabaseIdAndCollections(requestBody.DatabaseId, requestBody.Collections, queryOption)
 	if err != nil {
 		return err
 	}
+	mapIndexManager := make(map[string]map[string]models.Index)
+	for _, index := range indexes {
+		if _, exists := mapIndexManager[index.Collection]; !exists {
+			mapIndexManager[index.Collection] = make(map[string]models.Index)
+		}
+		mapIndexManager[index.Collection][index.KeySignature] = index
+	}
+
 	dbClient, err := mongodb.New(database.Uri)
 	if err != nil {
 		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "mongodb.New").Msg("index-controller")
@@ -347,6 +355,78 @@ func (ctrl *controller) CompareByCollections(ctx *fiber.Ctx) error {
 		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "dbClient.GetIndexesByDbNameAndCollections").Msg("index-controller")
 		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot get indexes from database"})
 	}
-	// todo: compare indexes between two
-	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
+	mapIndexClient := make(map[string]map[string]mongodb.Index)
+	for _, index := range clientIndexes {
+		if _, exists := mapIndexClient[index.Collection]; !exists {
+			mapIndexClient[index.Collection] = make(map[string]mongodb.Index)
+		}
+		mapIndexClient[index.Collection][index.KeySignature] = index
+	}
+	result := serializers.IndexCompareByCollectionsResponse{Items: make([]serializers.IndexCompareByCollectionsResponseItem, 0, len(requestBody.Collections))}
+	for _, collection := range requestBody.Collections {
+		compareItem := serializers.IndexCompareByCollectionsResponseItem{
+			Collection:       collection,
+			MissingIndexes:   make([]serializers.IndexCompareByCollectionsIndex, 0),
+			MatchedIndexes:   make([]serializers.IndexCompareByCollectionsIndex, 0),
+			RedundantIndexes: make([]serializers.IndexCompareByCollectionsIndex, 0),
+		}
+		for _, index := range mapIndexManager[collection] {
+			keys := make([]serializers.IndexCompareByCollectionsIndexKey, len(index.Keys))
+			for i, key := range index.Keys {
+				keys[i].Field = key.Field
+				keys[i].Value = key.Value
+			}
+			indexItem := serializers.IndexCompareByCollectionsIndex{
+				Options: serializers.IndexCompareByCollectionsIndexOption{
+					ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
+					IsUnique:           index.Options.IsUnique,
+				},
+				Name: index.Name,
+				Keys: keys,
+			}
+			if _, exists := mapIndexClient[collection][index.KeySignature]; exists {
+				compareItem.MatchedIndexes = append(compareItem.MatchedIndexes, indexItem)
+			} else {
+				compareItem.MissingIndexes = append(compareItem.MissingIndexes, indexItem)
+			}
+		}
+		for _, index := range mapIndexManager[collection] {
+			keys := make([]serializers.IndexCompareByCollectionsIndexKey, len(index.Keys))
+			for i, key := range index.Keys {
+				keys[i].Field = key.Field
+				keys[i].Value = key.Value
+			}
+			indexItem := serializers.IndexCompareByCollectionsIndex{
+				Options: serializers.IndexCompareByCollectionsIndexOption{
+					ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
+					IsUnique:           index.Options.IsUnique,
+				},
+				Name: index.Name,
+				Keys: keys,
+			}
+			if _, exists := mapIndexClient[collection][index.KeySignature]; exists {
+				delete(mapIndexClient[collection], index.KeySignature)
+				compareItem.MatchedIndexes = append(compareItem.MatchedIndexes, indexItem)
+			} else {
+				compareItem.MissingIndexes = append(compareItem.MissingIndexes, indexItem)
+			}
+		}
+		for _, index := range mapIndexClient[collection] {
+			keys := make([]serializers.IndexCompareByCollectionsIndexKey, len(index.Keys))
+			for i, key := range index.Keys {
+				keys[i].Field = key.Field
+				keys[i].Value = key.Value
+			}
+			compareItem.RedundantIndexes = append(compareItem.RedundantIndexes, serializers.IndexCompareByCollectionsIndex{
+				Options: serializers.IndexCompareByCollectionsIndexOption{
+					ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
+					IsUnique:           index.Options.IsUnique,
+				},
+				Name: index.Name,
+				Keys: keys,
+			})
+		}
+		result.Items = append(result.Items, compareItem)
+	}
+	return response.New(ctx, response.Options{Data: result})
 }

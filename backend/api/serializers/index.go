@@ -138,3 +138,30 @@ func (v *IndexCompareByCollectionsValidate) Validate() error {
 	}
 	return nil
 }
+
+type IndexCompareByCollectionsResponse struct {
+	Items []IndexCompareByCollectionsResponseItem `json:"items"`
+}
+
+type IndexCompareByCollectionsResponseItem struct {
+	Collection       string                           `json:"collection"`
+	MissingIndexes   []IndexCompareByCollectionsIndex `json:"missing_indexes"`
+	MatchedIndexes   []IndexCompareByCollectionsIndex `json:"matched_indexes"`
+	RedundantIndexes []IndexCompareByCollectionsIndex `json:"redundant_indexes"`
+}
+
+type IndexCompareByCollectionsIndex struct {
+	Options IndexCompareByCollectionsIndexOption `json:"options,omitempty"`
+	Name    string                               `json:"name"`
+	Keys    []IndexCompareByCollectionsIndexKey  `json:"keys"`
+}
+
+type IndexCompareByCollectionsIndexOption struct {
+	ExpireAfterSeconds *int32 `json:"expire_after_seconds"`
+	IsUnique           bool   `json:"is_unique"`
+}
+
+type IndexCompareByCollectionsIndexKey struct {
+	Field string `json:"field"`
+	Value int32  `json:"value"`
+}

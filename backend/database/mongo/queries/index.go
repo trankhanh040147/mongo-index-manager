@@ -23,6 +23,7 @@ type IndexQuery interface {
 	GetByDatabaseIdCollectionWithNameOrSignature(databaseId primitive.ObjectID, collection string, keySignature, name string, opts ...OptionsQuery) (index *models.Index, err error)
 	GetByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string, opts ...OptionsQuery) (indexes []models.Index, err error)
 	GetByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string, opts ...OptionsQuery) (indexes []models.Index, err error)
+	GetByDatabaseIdAndCollections(databaseId primitive.ObjectID, collections []string, opts ...OptionsQuery) (indexes []models.Index, err error)
 	GetTotalByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string) (total int64, err error)
 	GetTotalByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string) (total int64, err error)
 	GetByDatabaseIdCollectionKeyFieldsAndIsUnique(databaseId primitive.ObjectID, collection string, keyFields []string, isUnique bool, opts ...OptionsQuery) (index *models.Index, err error)
@@ -257,4 +258,27 @@ func (q *indexQuery) DeleteById(id primitive.ObjectID) error {
 		return response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: respErr.ErrResourceNotFound})
 	}
 	return nil
+}
+
+func (q *indexQuery) GetByDatabaseIdAndCollections(databaseId primitive.ObjectID, collections []string, opts ...OptionsQuery) ([]models.Index, error) {
+	opt := NewOptions()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	optFind := &options.FindOptions{
+		Projection: opt.QueryOnlyField(),
+	}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	cursor, err := q.collection.Find(ctx, bson.M{"database_id": databaseId, "collection": bson.M{"$in": collections}}, optFind)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "GetByDatabaseIdAndCollections").Str("functionInline", "q.collection.Find").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	data := make([]models.Index, 0)
+	if err = cursor.All(ctx, &data); err != nil {
+		logger.Error().Err(err).Str("function", "GetByDatabaseIdAndCollections").Str("functionInline", "cursor.All").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	return data, nil
 }
