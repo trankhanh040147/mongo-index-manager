@@ -139,10 +139,6 @@ func (v *IndexCompareByCollectionsValidate) Validate() error {
 	return nil
 }
 
-type IndexCompareByCollectionsResponse struct {
-	Items []IndexCompareByCollectionsResponseItem `json:"items"`
-}
-
 type IndexCompareByCollectionsResponseItem struct {
 	Collection       string                           `json:"collection"`
 	MissingIndexes   []IndexCompareByCollectionsIndex `json:"missing_indexes"`
@@ -162,6 +158,41 @@ type IndexCompareByCollectionsIndexOption struct {
 }
 
 type IndexCompareByCollectionsIndexKey struct {
+	Field string `json:"field"`
+	Value int32  `json:"value"`
+}
+
+type IndexCompareByDatabaseValidate struct {
+	DatabaseId primitive.ObjectID `json:"database_id" validate:"required"`
+}
+
+func (v *IndexCompareByDatabaseValidate) Validate() error {
+	validateEngine := validator.GetValidateEngine()
+	if err := validateEngine.Struct(v); err != nil {
+		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: validator.ParseValidateError(err)})
+	}
+	return nil
+}
+
+type IndexCompareByDatabaseResponseItem struct {
+	Collection       string                        `json:"collection"`
+	MissingIndexes   []IndexCompareByDatabaseIndex `json:"missing_indexes"`
+	MatchedIndexes   []IndexCompareByDatabaseIndex `json:"matched_indexes"`
+	RedundantIndexes []IndexCompareByDatabaseIndex `json:"redundant_indexes"`
+}
+
+type IndexCompareByDatabaseIndex struct {
+	Options IndexCompareByDatabaseIndexOption `json:"options,omitempty"`
+	Name    string                            `json:"name"`
+	Keys    []IndexCompareByDatabaseIndexKey  `json:"keys"`
+}
+
+type IndexCompareByDatabaseIndexOption struct {
+	ExpireAfterSeconds *int32 `json:"expire_after_seconds"`
+	IsUnique           bool   `json:"is_unique"`
+}
+
+type IndexCompareByDatabaseIndexKey struct {
 	Field string `json:"field"`
 	Value int32  `json:"value"`
 }

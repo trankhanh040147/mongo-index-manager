@@ -21,6 +21,7 @@ import (
 type IndexQuery interface {
 	GetById(id primitive.ObjectID, opts ...OptionsQuery) (index *models.Index, err error)
 	GetByDatabaseIdCollectionWithNameOrSignature(databaseId primitive.ObjectID, collection string, keySignature, name string, opts ...OptionsQuery) (index *models.Index, err error)
+	GetByDatabaseId(databaseId primitive.ObjectID, opts ...OptionsQuery) (indexes []models.Index, err error)
 	GetByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string, opts ...OptionsQuery) (indexes []models.Index, err error)
 	GetByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string, opts ...OptionsQuery) (indexes []models.Index, err error)
 	GetByDatabaseIdAndCollections(databaseId primitive.ObjectID, collections []string, opts ...OptionsQuery) (indexes []models.Index, err error)
@@ -278,6 +279,29 @@ func (q *indexQuery) GetByDatabaseIdAndCollections(databaseId primitive.ObjectID
 	data := make([]models.Index, 0)
 	if err = cursor.All(ctx, &data); err != nil {
 		logger.Error().Err(err).Str("function", "GetByDatabaseIdAndCollections").Str("functionInline", "cursor.All").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	return data, nil
+}
+
+func (q *indexQuery) GetByDatabaseId(databaseId primitive.ObjectID, opts ...OptionsQuery) ([]models.Index, error) {
+	opt := NewOptions()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	optFind := &options.FindOptions{
+		Projection: opt.QueryOnlyField(),
+	}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	cursor, err := q.collection.Find(ctx, bson.M{"database_id": databaseId}, optFind)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "GetByDatabaseId").Str("functionInline", "q.collection.Find").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	data := make([]models.Index, 0)
+	if err = cursor.All(ctx, &data); err != nil {
+		logger.Error().Err(err).Str("function", "GetByDatabaseId").Str("functionInline", "cursor.All").Msg("indexQuery")
 		return nil, response.NewError(fiber.StatusInternalServerError)
 	}
 	return data, nil
