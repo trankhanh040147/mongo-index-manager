@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
@@ -18,8 +19,9 @@ var logger = logging.GetLogger()
 type Service interface {
 	TestConnection(uri string) error
 	GetIndexesByDbNameAndCollections(dbName string, collections []string) (indexes []Index, err error)
+	RemoveIndexes(dbName string, indexes []Index) error
+	CreateIndexes(dbName string, indexes []Index) error
 }
-
 type service struct {
 	client *mongo.Client
 }
@@ -59,6 +61,24 @@ func (m *Index) GetKeySignature() string {
 		keyString += fmt.Sprintf("expireAfterSeconds_%d", *m.Options.ExpireAfterSeconds)
 	}
 	return keyString
+}
+
+func (m *Index) toIndexModel() mongo.IndexModel {
+	keys := bson.D{}
+	for _, key := range m.Keys {
+		keys = append(keys, bson.E{Key: key.Field, Value: key.Value})
+	}
+	result := mongo.IndexModel{
+		Keys:    keys,
+		Options: options.Index(),
+	}
+	if m.Options.ExpireAfterSeconds != nil {
+		result.Options.SetExpireAfterSeconds(*m.Options.ExpireAfterSeconds)
+	}
+	if m.Options.IsUnique {
+		result.Options.SetUnique(m.Options.IsUnique)
+	}
+	return result
 }
 
 func New(uri string) (Service, error) {

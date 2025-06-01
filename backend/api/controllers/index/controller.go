@@ -28,6 +28,7 @@ type Controller interface {
 	Delete(ctx *fiber.Ctx) error
 	CompareByCollections(ctx *fiber.Ctx) error
 	CompareByDatabase(ctx *fiber.Ctx) error
+	SyncByCollections(ctx *fiber.Ctx) error
 }
 
 type controller struct {
@@ -463,7 +464,6 @@ func (ctrl *controller) CompareByDatabase(ctx *fiber.Ctx) error {
 		}
 		mapIndexClient[index.Collection][index.KeySignature] = index
 	}
-	//result := serializers.IndexCompareByDatabaseResponse{Items: make([]serializers.IndexCompareByDatabaseResponseItem, 0, len(collections))}
 	result := make([]serializers.IndexCompareByDatabaseResponseItem, 0, len(collections))
 	for _, collection := range collections {
 		compareItem := serializers.IndexCompareByDatabaseResponseItem{
@@ -511,4 +511,103 @@ func (ctrl *controller) CompareByDatabase(ctx *fiber.Ctx) error {
 		result = append(result, compareItem)
 	}
 	return response.NewArrayWithPagination(ctx, result, &request.Pagination{})
+}
+
+func (ctrl *controller) SyncByCollections(ctx *fiber.Ctx) error {
+	var requestBody serializers.IndexCompareByCollectionsValidate
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return response.New(ctx, response.Options{Code: fiber.StatusBadRequest, Data: respErr.ErrFieldWrongType})
+	}
+	if err := requestBody.Validate(); err != nil {
+		return err
+	}
+	queryOption := queries.NewOptions()
+	queryOption.SetOnlyFields("uri", "db_name")
+	database, err := queries.NewDatabase(ctx.Context()).GetById(requestBody.DatabaseId, queryOption)
+	if err != nil {
+		return err
+	}
+	indexQuery := queries.NewIndex(ctx.Context())
+	queryOption.SetOnlyFields("options", "keys", "key_signature", "collection", "name")
+	indexes, err := indexQuery.GetByDatabaseIdAndCollections(requestBody.DatabaseId, requestBody.Collections, queryOption)
+	if err != nil {
+		return err
+	}
+	mapIndexManager := make(map[string]map[string]models.Index)
+	for _, index := range indexes {
+		if _, exists := mapIndexManager[index.Collection]; !exists {
+			mapIndexManager[index.Collection] = make(map[string]models.Index)
+		}
+		mapIndexManager[index.Collection][index.KeySignature] = index
+	}
+
+	dbClient, err := mongodb.New(database.Uri)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "mongodb.New").Msg("index-controller")
+		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Can't connect to database"})
+	}
+	clientIndexes, err := dbClient.GetIndexesByDbNameAndCollections(database.DBName, requestBody.Collections)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "dbClient.GetIndexesByDbNameAndCollections").Msg("index-controller")
+		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Can't get indexes from database"})
+	}
+	mapIndexClient := make(map[string]map[string]mongodb.Index)
+	for _, index := range clientIndexes {
+		if _, exists := mapIndexClient[index.Collection]; !exists {
+			mapIndexClient[index.Collection] = make(map[string]mongodb.Index)
+		}
+		mapIndexClient[index.Collection][index.KeySignature] = index
+	}
+	var (
+		missingIndexes   = make([]mongodb.Index, 0)
+		redundantIndexes = make([]mongodb.Index, 0)
+	)
+	for _, collection := range requestBody.Collections {
+		for _, index := range mapIndexManager[collection] {
+			keys := make([]mongodb.IndexKey, len(index.Keys))
+			for i, key := range index.Keys {
+				keys[i].Field = key.Field
+				keys[i].Value = key.Value
+			}
+			indexItem := mongodb.Index{
+				Collection: collection,
+				Options: mongodb.IndexOption{
+					ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
+					IsUnique:           index.Options.IsUnique,
+				},
+				Name: index.Name,
+				Keys: keys,
+			}
+			if _, exists := mapIndexClient[collection][index.KeySignature]; exists {
+				delete(mapIndexClient[collection], index.KeySignature)
+			} else {
+				missingIndexes = append(missingIndexes, indexItem)
+			}
+		}
+		for _, index := range mapIndexClient[collection] {
+			keys := make([]mongodb.IndexKey, len(index.Keys))
+			for i, key := range index.Keys {
+				keys[i].Field = key.Field
+				keys[i].Value = key.Value
+			}
+			redundantIndexes = append(redundantIndexes, mongodb.Index{
+				Collection: collection,
+				Options: mongodb.IndexOption{
+					ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
+					IsUnique:           index.Options.IsUnique,
+				},
+				Name: index.Name,
+				Keys: keys,
+			})
+		}
+	}
+	if err = dbClient.RemoveIndexes(database.DBName, redundantIndexes); err != nil {
+		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "dbClient.RemoveIndexes").Msg("index-controller")
+		return response.New(ctx, response.Options{Code: fiber.StatusInternalServerError, Data: "Can't remove indexes"})
+	}
+	if err = dbClient.CreateIndexes(database.DBName, missingIndexes); err != nil {
+		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "dbClient.CreateIndexes").Msg("index-controller")
+		return response.New(ctx, response.Options{Code: fiber.StatusInternalServerError, Data: "Can't create indexes"})
+	}
+	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
 }

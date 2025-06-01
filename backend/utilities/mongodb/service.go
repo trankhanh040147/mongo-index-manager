@@ -15,7 +15,7 @@ func (s *service) TestConnection(uri string) error {
 	defer cancel()
 	client, err := mongo.Connect(ctx, opts)
 	if err != nil {
-		logger.Fatal().Err(err).Str("function", "TestConnection").Str("functionInline", "mongo.Connect").Msg("mongodb")
+		logger.Error().Err(err).Str("function", "TestConnection").Str("functionInline", "mongo.Connect").Msg("mongodb")
 	}
 	ctxPing, cancelPing := context.WithTimeout(context.Background(), defaultContextTimeout)
 	defer cancelPing()
@@ -37,13 +37,13 @@ func (s *service) GetIndexesByDbNameAndCollections(dbName string, collections []
 		coll := s.client.Database(dbName).Collection(collName)
 		cursor, err := coll.Indexes().List(ctx)
 		if err != nil {
-			logger.Fatal().Err(err).Str("collection", collName).Str("function", "GetIndexesByDbNameAndCollections").Str("functionInline", "coll.Indexes.List").Msg("mongodb")
+			logger.Error().Err(err).Str("collection", collName).Str("function", "GetIndexesByDbNameAndCollections").Str("functionInline", "coll.Indexes.List").Msg("mongodb")
 			return nil, err
 		}
 		for cursor.Next(ctx) {
 			var indexDoc bson.M
 			if err = cursor.Decode(&indexDoc); err != nil {
-				logger.Fatal().Err(err).Str("collection", collName).Str("function", "GetIndexesByDbNameAndCollections").Str("functionInline", "cursor.Decode").Msg("mongodb")
+				logger.Error().Err(err).Str("collection", collName).Str("function", "GetIndexesByDbNameAndCollections").Str("functionInline", "cursor.Decode").Msg("mongodb")
 				return nil, err
 			}
 			keys, ok := indexDoc["key"].(bson.M)
@@ -85,12 +85,70 @@ func (s *service) GetIndexesByDbNameAndCollections(dbName string, collections []
 			indexes = append(indexes, index)
 		}
 		if err = cursor.Err(); err != nil {
-			logger.Fatal().Err(err).Str("collection", collName).Str("function", "GetIndexesByDbNameAndCollections").Str("functionInline", "cursor.Err").Msg("mongodb")
+			logger.Error().Err(err).Str("collection", collName).Str("function", "GetIndexesByDbNameAndCollections").Str("functionInline", "cursor.Err").Msg("mongodb")
 			return nil, err
 		}
 		if err = cursor.Close(ctx); err != nil {
-			logger.Fatal().Err(err).Str("collection", collName).Str("function", "GetIndexesByDbNameAndCollections").Str("functionInline", "cursor.Close").Msg("mongodb")
+			logger.Error().Err(err).Str("collection", collName).Str("function", "GetIndexesByDbNameAndCollections").Str("functionInline", "cursor.Close").Msg("mongodb")
 		}
 	}
 	return indexes, nil
+}
+
+func (s *service) RemoveIndexes(dbName string, indexes []Index) error {
+	if len(indexes) == 0 {
+		return nil
+	}
+	mapIndexByCollection := make(map[string][]Index)
+	mapCollection := make(map[string]struct{})
+	collections := make([]string, 0)
+	for _, index := range indexes {
+		if _, exists := mapCollection[index.Collection]; !exists {
+			collections = append(collections, index.Collection)
+			mapCollection[index.Collection] = struct{}{}
+		}
+		mapIndexByCollection[index.Collection] = append(mapIndexByCollection[index.Collection], index)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
+	defer cancel()
+	for _, collName := range collections {
+		if len(mapIndexByCollection[collName]) > 0 {
+			coll := s.client.Database(dbName).Collection(collName)
+			for _, index := range mapIndexByCollection[collName] {
+				if _, err := coll.Indexes().DropOne(ctx, index.Name); err != nil {
+					logger.Error().Err(err).Str("collection", collName).Str("function", "RemoveIndexes").Str("functionInline", "coll.Indexes().DropOne").Msg("mongodb")
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (s *service) CreateIndexes(dbName string, indexes []Index) error {
+	if len(indexes) == 0 {
+		return nil
+	}
+	mapIndexByCollection := make(map[string][]mongo.IndexModel)
+	mapCollection := make(map[string]struct{})
+	collections := make([]string, 0)
+	for _, index := range indexes {
+		if _, exists := mapCollection[index.Collection]; !exists {
+			collections = append(collections, index.Collection)
+			mapCollection[index.Collection] = struct{}{}
+		}
+		mapIndexByCollection[index.Collection] = append(mapIndexByCollection[index.Collection], index.toIndexModel())
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
+	defer cancel()
+	for _, collName := range collections {
+		if len(mapIndexByCollection[collName]) > 0 {
+			coll := s.client.Database(dbName).Collection(collName)
+			if _, err := coll.Indexes().CreateMany(ctx, mapIndexByCollection[collName]); err != nil {
+				logger.Error().Err(err).Str("collection", collName).Str("function", "CreateIndexes").Str("functionInline", " coll.Indexes().CreateMany").Msg("mongodb")
+				return err
+			}
+		}
+	}
+	return nil
 }

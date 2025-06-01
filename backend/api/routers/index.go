@@ -32,4 +32,5 @@ func (r *index) V1() {
 	r.router.Delete("/:id", r.controller.Delete)
 	r.router.Post("/compare-by-collections", r.controller.CompareByCollections)
 	r.router.Post("/compare-by-database", r.controller.CompareByDatabase)
+	r.router.Post("/sync-by-collections", r.controller.SyncByCollections)
 }
