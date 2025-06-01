@@ -386,27 +386,7 @@ func (ctrl *controller) CompareByCollections(ctx *fiber.Ctx) error {
 			}
 			if _, exists := mapIndexClient[collection][index.KeySignature]; exists {
 				compareItem.MatchedIndexes = append(compareItem.MatchedIndexes, indexItem)
-			} else {
-				compareItem.MissingIndexes = append(compareItem.MissingIndexes, indexItem)
-			}
-		}
-		for _, index := range mapIndexManager[collection] {
-			keys := make([]serializers.IndexCompareByCollectionsIndexKey, len(index.Keys))
-			for i, key := range index.Keys {
-				keys[i].Field = key.Field
-				keys[i].Value = key.Value
-			}
-			indexItem := serializers.IndexCompareByCollectionsIndex{
-				Options: serializers.IndexCompareByCollectionsIndexOption{
-					ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
-					IsUnique:           index.Options.IsUnique,
-				},
-				Name: index.Name,
-				Keys: keys,
-			}
-			if _, exists := mapIndexClient[collection][index.KeySignature]; exists {
 				delete(mapIndexClient[collection], index.KeySignature)
-				compareItem.MatchedIndexes = append(compareItem.MatchedIndexes, indexItem)
 			} else {
 				compareItem.MissingIndexes = append(compareItem.MissingIndexes, indexItem)
 			}
