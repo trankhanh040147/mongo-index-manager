@@ -24,9 +24,21 @@ func NewDatabase(router fiber.Router) Database {
 }
 
 func (r *database) V1() {
-	r.router.Use(authMiddleware.AccessToken)
-	r.router.Get("/:id", r.controller.Get)
-	r.router.Post("/", r.controller.Create)
-	r.router.Post("/list", r.controller.List)
-	r.router.Put("/:id/", r.controller.Update)
+	r.collection()
+	r.root()
+}
+
+func (r *database) root() {
+	router := r.router.Group("/")
+	router.Use(authMiddleware.AccessToken)
+	router.Get("/:id", r.controller.Get)
+	router.Post("/", r.controller.Create)
+	router.Post("/list", r.controller.List)
+	router.Put("/:id/", r.controller.Update)
+}
+
+func (r *database) collection() {
+	router := r.router.Group("/collections")
+	router.Use(authMiddleware.AccessToken)
+	router.Post("/list", r.controller.ListCollections)
 }

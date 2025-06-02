@@ -77,3 +77,23 @@ func (v *DatabaseUpdateBodyValidate) Validate() error {
 	}
 	return nil
 }
+
+type DatabaseListCollectionsBodyValidate struct {
+	Query      string             `json:"query" validate:"omitempty,max=500"`
+	Page       int64              `json:"page" validate:"omitempty,min=0"`
+	Limit      int64              `json:"limit" validate:"omitempty,min=0"`
+	DatabaseId primitive.ObjectID `json:"database_id" validate:"required"`
+}
+
+func (v *DatabaseListCollectionsBodyValidate) Validate() error {
+	validateEngine := validator.GetValidateEngine()
+	if err := validateEngine.Struct(v); err != nil {
+		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: validator.ParseValidateError(err)})
+	}
+	return nil
+}
+
+type DatabaseListCollectionsResponseItem struct {
+	Name         string `json:"name"`
+	TotalIndexes int    `json:"total_indexes"`
+}

@@ -27,6 +27,7 @@ type IndexQuery interface {
 	GetByDatabaseIdAndCollections(databaseId primitive.ObjectID, collections []string, opts ...OptionsQuery) (indexes []models.Index, err error)
 	GetTotalByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string) (total int64, err error)
 	GetTotalByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string) (total int64, err error)
+	GetTotalCollectionsByDatabaseIdAndQuery(databaseId primitive.ObjectID, query string) (total int64, err error)
 	GetByDatabaseIdCollectionKeyFieldsAndIsUnique(databaseId primitive.ObjectID, collection string, keyFields []string, isUnique bool, opts ...OptionsQuery) (index *models.Index, err error)
 	CreateOne(index models.Index) (newIndex *models.Index, err error)
 	UpdateNameKeySignatureOptionsKeysById(id primitive.ObjectID, name, keySignature string, indexOpt models.IndexOption, keys []models.IndexKey) error
@@ -305,4 +306,15 @@ func (q *indexQuery) GetByDatabaseId(databaseId primitive.ObjectID, opts ...Opti
 		return nil, response.NewError(fiber.StatusInternalServerError)
 	}
 	return data, nil
+}
+
+// count total different collections in a database by query index collection
+func (q *indexQuery) GetTotalCollectionsByDatabaseIdAndQuery(databaseId primitive.ObjectID, query string) (int64, error) {
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	filter := bson.M{"database_id": databaseId}
+	if query != "" {
+		filter["collection"] = primitive.Regex{Pattern: regexp.QuoteMeta(query), Options: "i"}
+	}
+
 }

@@ -23,6 +23,7 @@ type Controller interface {
 	Create(ctx *fiber.Ctx) error
 	List(ctx *fiber.Ctx) error
 	Update(ctx *fiber.Ctx) error
+	ListCollections(ctx *fiber.Ctx) error
 }
 
 type controller struct {
@@ -220,4 +221,50 @@ func (ctrl *controller) Update(ctx *fiber.Ctx) error {
 		return err
 	}
 	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
+}
+
+func (ctrl *controller) ListCollections(ctx *fiber.Ctx) error {
+	var requestBody serializers.DatabaseListCollectionsBodyValidate
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return response.New(ctx, response.Options{Code: fiber.StatusBadRequest, Data: respErr.ErrFieldWrongType})
+	}
+	if err := requestBody.Validate(); err != nil {
+		return err
+	}
+	var (
+		errorChan   = make(chan error, 1)
+		totalChan   = make(chan int64, 1)
+		queryOption = queries.NewOptions()
+		indexQuery  = queries.NewIndex(ctx.Context())
+		pagination  = request.NewPagination(requestBody.Limit, requestBody.Page)
+		result      = make([]serializers.DatabaseListCollectionsResponseItem, 0)
+	)
+	queryOption.SetOnlyFields("_id")
+	if _, err := queries.NewDatabase(ctx.Context()).GetById(requestBody.DatabaseId, queryOption); err != nil {
+		return err
+	}
+	queryOption.SetPagination(pagination)
+	queryOption.AddSortKey(map[string]int{
+		"_id": queries.SortTypeDesc,
+	})
+	queryOption.SetOnlyFields("created_at", "updated_at", "name", "description", "uri", "db_name", "_id")
+	go func() {
+		total, err := indexQuery.GetTotalCollectionsByDatabaseIdAndQuery(requestBody.DatabaseId, requestBody.Query)
+		errorChan <- err
+		totalChan <- total
+	}()
+	collections, err := indexQuery.GetCollectionsByDatabaseIdAndQuery(requestBody.DatabaseId, requestBody.Query, queryOption)
+	if err != nil {
+		return err
+	}
+	if err = <-errorChan; err != nil {
+		return err
+	}
+	result = make([]serializers.DatabaseListCollectionsResponseItem, len(collections))
+	for i, collection := range collections {
+		result[i].Name = collection.Name
+		result[i].TotalIndexes = collection.TotalIndexes
+	}
+	pagination.SetTotal(<-totalChan)
+	return response.NewArrayWithPagination(ctx, result, pagination)
 }
