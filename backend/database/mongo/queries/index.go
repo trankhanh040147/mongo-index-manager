@@ -25,9 +25,10 @@ type IndexQuery interface {
 	GetByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string, opts ...OptionsQuery) (indexes []models.Index, err error)
 	GetByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string, opts ...OptionsQuery) (indexes []models.Index, err error)
 	GetByDatabaseIdAndCollections(databaseId primitive.ObjectID, collections []string, opts ...OptionsQuery) (indexes []models.Index, err error)
+	GetCollectionsByDatabaseIdAndQuery(databaseId primitive.ObjectID, query string, opts ...OptionsQuery) (result []IndexGetCollectionsByDatabaseIdAndQueryData, err error)
 	GetTotalByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string) (total int64, err error)
 	GetTotalByDatabaseIdCollectionAndQuery(databaseId primitive.ObjectID, collection, query string) (total int64, err error)
-	GetTotalCollectionsByDatabaseIdAndQuery(databaseId primitive.ObjectID, query string) (total int64, err error)
+	GetTotalCollectionsByDatabaseIdAndQuery(databaseId primitive.ObjectID, query string) (total int, err error)
 	GetByDatabaseIdCollectionKeyFieldsAndIsUnique(databaseId primitive.ObjectID, collection string, keyFields []string, isUnique bool, opts ...OptionsQuery) (index *models.Index, err error)
 	CreateOne(index models.Index) (newIndex *models.Index, err error)
 	UpdateNameKeySignatureOptionsKeysById(id primitive.ObjectID, name, keySignature string, indexOpt models.IndexOption, keys []models.IndexKey) error
@@ -308,13 +309,66 @@ func (q *indexQuery) GetByDatabaseId(databaseId primitive.ObjectID, opts ...Opti
 	return data, nil
 }
 
-// count total different collections in a database by query index collection
-func (q *indexQuery) GetTotalCollectionsByDatabaseIdAndQuery(databaseId primitive.ObjectID, query string) (int64, error) {
+func (q *indexQuery) GetTotalCollectionsByDatabaseIdAndQuery(databaseId primitive.ObjectID, query string) (int, error) {
 	ctx, cancel := timeoutFunc(q.context)
 	defer cancel()
 	filter := bson.M{"database_id": databaseId}
 	if query != "" {
 		filter["collection"] = primitive.Regex{Pattern: regexp.QuoteMeta(query), Options: "i"}
 	}
+	result, err := q.collection.Distinct(ctx, "collection", filter)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "GetTotalCollectionsByDatabaseIdAndQuery").Str("functionInline", "q.collection.Distinct").Msg("indexQuery")
+		return 0, response.NewError(fiber.StatusInternalServerError)
+	}
+	return len(result), nil
+}
 
+func (q *indexQuery) GetCollectionsByDatabaseIdAndQuery(databaseId primitive.ObjectID, query string, opts ...OptionsQuery) ([]IndexGetCollectionsByDatabaseIdAndQueryData, error) {
+	opt := NewOptions()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	matchFilter := bson.M{"database_id": databaseId}
+	if query != "" {
+		matchFilter["collection"] = primitive.Regex{Pattern: regexp.QuoteMeta(query), Options: "i"}
+	}
+	pipeline := mongoDriver.Pipeline{
+		{{
+			"$match", matchFilter,
+		}},
+		{{
+			"$group", bson.M{
+				"_id":           "$collection",
+				"total_indexes": bson.M{"$sum": 1},
+			},
+		}},
+		{{
+			"$sort", opt.QuerySort(),
+		}},
+		{{
+			"$skip", opt.QueryPaginationSkip(),
+		}},
+		{{
+			"$limit", opt.QueryPaginationLimit(),
+		}},
+		{{
+			"$project", bson.M{
+				"total_indexes": "$total_indexes",
+			},
+		}},
+	}
+	cursor, err := q.collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "GetCollectionsByDatabaseIdAndQuery").Str("functionInline", "q.collection.Find").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	data := make([]IndexGetCollectionsByDatabaseIdAndQueryData, 0)
+	if err = cursor.All(ctx, &data); err != nil {
+		logger.Error().Err(err).Str("function", "GetCollectionsByDatabaseIdAndQuery").Str("functionInline", "cursor.All").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	return data, nil
 }

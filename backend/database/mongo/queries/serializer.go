@@ -17,3 +17,8 @@ type DatabaseUpdateInfoByIdRequest struct {
 	Uri         string
 	DBName      string
 }
+
+type IndexGetCollectionsByDatabaseIdAndQueryData struct {
+	Collection   string `bson:"_id"`
+	TotalIndexes int    `bson:"total_indexes"`
+}

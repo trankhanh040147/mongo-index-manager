@@ -63,9 +63,9 @@ type IndexGetResponseKey struct {
 
 type IndexListByCollectionBodyValidate struct {
 	Query      string             `json:"query" validate:"omitempty"`
+	Collection string             `json:"collection" validate:"required"`
 	Page       int64              `json:"page" validate:"omitempty,min=0"`
 	Limit      int64              `json:"limit" validate:"omitempty,min=0"`
-	Collection string             `json:"collection" validate:"required"`
 	DatabaseId primitive.ObjectID `json:"database_id" validate:"required"`
 }
 

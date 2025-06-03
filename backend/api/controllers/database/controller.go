@@ -233,7 +233,7 @@ func (ctrl *controller) ListCollections(ctx *fiber.Ctx) error {
 	}
 	var (
 		errorChan   = make(chan error, 1)
-		totalChan   = make(chan int64, 1)
+		totalChan   = make(chan int, 1)
 		queryOption = queries.NewOptions()
 		indexQuery  = queries.NewIndex(ctx.Context())
 		pagination  = request.NewPagination(requestBody.Limit, requestBody.Page)
@@ -243,16 +243,15 @@ func (ctrl *controller) ListCollections(ctx *fiber.Ctx) error {
 	if _, err := queries.NewDatabase(ctx.Context()).GetById(requestBody.DatabaseId, queryOption); err != nil {
 		return err
 	}
-	queryOption.SetPagination(pagination)
-	queryOption.AddSortKey(map[string]int{
-		"_id": queries.SortTypeDesc,
-	})
-	queryOption.SetOnlyFields("created_at", "updated_at", "name", "description", "uri", "db_name", "_id")
 	go func() {
 		total, err := indexQuery.GetTotalCollectionsByDatabaseIdAndQuery(requestBody.DatabaseId, requestBody.Query)
 		errorChan <- err
 		totalChan <- total
 	}()
+	queryOption.SetPagination(pagination)
+	queryOption.AddSortKey(map[string]int{
+		"_id": queries.SortTypeAsc,
+	})
 	collections, err := indexQuery.GetCollectionsByDatabaseIdAndQuery(requestBody.DatabaseId, requestBody.Query, queryOption)
 	if err != nil {
 		return err
@@ -262,9 +261,9 @@ func (ctrl *controller) ListCollections(ctx *fiber.Ctx) error {
 	}
 	result = make([]serializers.DatabaseListCollectionsResponseItem, len(collections))
 	for i, collection := range collections {
-		result[i].Name = collection.Name
+		result[i].Collection = collection.Collection
 		result[i].TotalIndexes = collection.TotalIndexes
 	}
-	pagination.SetTotal(<-totalChan)
+	pagination.SetTotal(int64(<-totalChan))
 	return response.NewArrayWithPagination(ctx, result, pagination)
 }

@@ -79,7 +79,7 @@ func (v *DatabaseUpdateBodyValidate) Validate() error {
 }
 
 type DatabaseListCollectionsBodyValidate struct {
-	Query      string             `json:"query" validate:"omitempty,max=500"`
+	Query      string             `json:"query" validate:"omitempty"`
 	Page       int64              `json:"page" validate:"omitempty,min=0"`
 	Limit      int64              `json:"limit" validate:"omitempty,min=0"`
 	DatabaseId primitive.ObjectID `json:"database_id" validate:"required"`
@@ -94,6 +94,6 @@ func (v *DatabaseListCollectionsBodyValidate) Validate() error {
 }
 
 type DatabaseListCollectionsResponseItem struct {
-	Name         string `json:"name"`
+	Collection   string `json:"collection"`
 	TotalIndexes int    `json:"total_indexes"`
 }
