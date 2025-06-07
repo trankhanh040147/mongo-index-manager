@@ -31,6 +31,7 @@ type IndexQuery interface {
 	GetTotalCollectionsByDatabaseIdAndQuery(databaseId primitive.ObjectID, query string) (total int, err error)
 	GetByDatabaseIdCollectionKeyFieldsAndIsUnique(databaseId primitive.ObjectID, collection string, keyFields []string, isUnique bool, opts ...OptionsQuery) (index *models.Index, err error)
 	CreateOne(index models.Index) (newIndex *models.Index, err error)
+	CreateMany(indexes []models.Index) error
 	UpdateNameKeySignatureOptionsKeysById(id primitive.ObjectID, name, keySignature string, indexOpt models.IndexOption, keys []models.IndexKey) error
 	DeleteById(id primitive.ObjectID) error
 	DeleteByDatabaseId(databaseId primitive.ObjectID) error
@@ -384,6 +385,29 @@ func (q *indexQuery) DeleteByDatabaseId(databaseId primitive.ObjectID) error {
 	}
 	if result.DeletedCount == 0 {
 		return response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: respErr.ErrResourceNotFound})
+	}
+	return nil
+}
+
+func (q *indexQuery) CreateMany(indexes []models.Index) error {
+	if len(indexes) == 0 {
+		return nil
+	}
+	docs := make(bson.A, 0, len(indexes))
+	currentTime := time.Now()
+	for _, index := range indexes {
+		index.CreatedAt = currentTime
+		index.UpdatedAt = currentTime
+		docs = append(docs, index)
+	}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	if _, err := q.collection.InsertMany(ctx, docs); err != nil {
+		if mongoDriver.IsDuplicateKeyError(err) {
+			return response.NewError(fiber.StatusConflict, response.ErrorOptions{Data: respErr.ErrResourceConflict})
+		}
+		logger.Error().Err(err).Str("function", "CreateMany").Str("functionInline", "q.collection.InsertMany").Msg("indexQuery")
+		return response.NewError(fiber.StatusInternalServerError)
 	}
 	return nil
 }

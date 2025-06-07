@@ -19,6 +19,7 @@ var logger = logging.GetLogger()
 type Service interface {
 	TestConnection(uri string) error
 	GetIndexesByDbNameAndCollections(dbName string, collections []string) (indexes []Index, err error)
+	GetIndexesByDbName(dbName string) (indexes []Index, err error)
 	RemoveIndexes(dbName string, indexes []Index) error
 	CreateIndexes(dbName string, indexes []Index) error
 }

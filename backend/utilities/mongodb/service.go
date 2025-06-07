@@ -152,3 +152,75 @@ func (s *service) CreateIndexes(dbName string, indexes []Index) error {
 	}
 	return nil
 }
+
+func (s *service) GetIndexesByDbName(dbName string) ([]Index, error) {
+	var indexes []Index
+	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
+	defer cancel()
+	db := s.client.Database(dbName)
+	collections, err := db.ListCollectionNames(ctx, bson.M{})
+	if err != nil {
+		logger.Error().Err(err).Str("dbName", dbName).Str("function", "GetIndexesByDbName").Str("functionInline", "db.ListCollectionNames").Msg("mongodb")
+		return indexes, err
+	}
+	for _, collName := range collections {
+		coll := db.Collection(collName)
+		cursor, err := coll.Indexes().List(ctx)
+		if err != nil {
+			logger.Error().Err(err).Str("collection", collName).Str("function", "GetIndexesByDbName").Str("functionInline", "coll.Indexes.List").Msg("mongodb")
+			return nil, err
+		}
+		for cursor.Next(ctx) {
+			var indexDoc bson.M
+			if err = cursor.Decode(&indexDoc); err != nil {
+				logger.Error().Err(err).Str("collection", collName).Str("function", "GetIndexesByDbName").Str("functionInline", "cursor.Decode").Msg("mongodb")
+				return nil, err
+			}
+			keys, ok := indexDoc["key"].(bson.M)
+			if !ok {
+				continue
+			}
+			index := Index{
+				Keys: make([]IndexKey, 0, len(keys)),
+				Options: IndexOption{
+					ExpireAfterSeconds: nil,
+					IsUnique:           false,
+				},
+				Collection: collName,
+			}
+			isDefaultIndex := false
+			for k, v := range keys {
+				if k == "_id" {
+					isDefaultIndex = true
+					break
+				}
+				index.Keys = append(index.Keys, IndexKey{
+					Field: k,
+					Value: v.(int32),
+				})
+			}
+			if isDefaultIndex {
+				continue
+			}
+			if isUnique, ok := indexDoc["unique"].(bool); ok {
+				index.Options.IsUnique = isUnique
+			}
+			if expires, ok := indexDoc["expireAfterSeconds"].(int32); ok {
+				index.Options.ExpireAfterSeconds = &expires
+			}
+			if name, ok := indexDoc["name"].(string); ok {
+				index.Name = name
+			}
+			index.KeySignature = index.GetKeySignature()
+			indexes = append(indexes, index)
+		}
+		if err = cursor.Err(); err != nil {
+			logger.Error().Err(err).Str("collection", collName).Str("function", "GetIndexesByDbName").Str("functionInline", "cursor.Err").Msg("mongodb")
+			return nil, err
+		}
+		if err = cursor.Close(ctx); err != nil {
+			logger.Error().Err(err).Str("collection", collName).Str("function", "GetIndexesByDbName").Str("functionInline", "cursor.Close").Msg("mongodb")
+		}
+	}
+	return indexes, nil
+}

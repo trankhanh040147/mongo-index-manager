@@ -74,12 +74,40 @@ func (ctrl *controller) Create(ctx *fiber.Ctx) error {
 	} else {
 		return response.NewError(fiber.StatusConflict, response.ErrorOptions{Data: respErr.ErrResourceConflict})
 	}
+	var indexes []models.Index
 	if requestBody.IsTestConnection || requestBody.IsSyncIndex {
-		if _, err := mongodb.New(requestBody.Uri); err != nil {
+		dbClient, err := mongodb.New(requestBody.Uri)
+		if err != nil {
 			logger.Error().Err(err).Str("function", "Create").Str("functionInline", "mongodb.New").Msg("database-controller")
 			return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot connect to database"})
 		}
-		// TODO: handle import indexes option
+		if requestBody.IsSyncIndex {
+			clientIndexes, err := dbClient.GetIndexesByDbName(requestBody.DBName)
+			if err != nil {
+				logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "dbClient.GetIndexesByDbName").Msg("database-controller")
+				return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot get indexes from database"})
+			}
+			indexes = make([]models.Index, 0, len(clientIndexes))
+			for _, index := range clientIndexes {
+				keys := make([]models.IndexKey, 0, len(index.Keys))
+				for _, key := range index.Keys {
+					keys = append(keys, models.IndexKey{
+						Field: key.Field,
+						Value: key.Value,
+					})
+				}
+				indexes = append(indexes, models.Index{
+					Options: models.IndexOption{
+						ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
+						IsUnique:           index.Options.IsUnique,
+					},
+					Collection:   index.Collection,
+					Name:         index.Name,
+					KeySignature: index.KeySignature,
+					Keys:         keys,
+				})
+			}
+		}
 	}
 	database, err := databaseQuery.CreateOne(models.Database{
 		Name:        requestBody.Name,
@@ -88,6 +116,12 @@ func (ctrl *controller) Create(ctx *fiber.Ctx) error {
 		DBName:      requestBody.DBName,
 	})
 	if err != nil {
+		return err
+	}
+	for i := range indexes {
+		indexes[i].DatabaseId = database.Id
+	}
+	if err = queries.NewIndex(ctx.Context()).CreateMany(indexes); err != nil {
 		return err
 	}
 	return response.New(ctx, response.Options{
