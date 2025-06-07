@@ -58,10 +58,10 @@ func (s *service) GetIndexesByDbNameAndCollections(dbName string, collections []
 				},
 				Collection: collName,
 			}
-			isDefault := false
+			isDefaultIndex := false
 			for k, v := range keys {
 				if k == "_id" {
-					isDefault = true
+					isDefaultIndex = true
 					break
 				}
 				index.Keys = append(index.Keys, IndexKey{
@@ -69,7 +69,7 @@ func (s *service) GetIndexesByDbNameAndCollections(dbName string, collections []
 					Value: v.(int32),
 				})
 			}
-			if isDefault {
+			if isDefaultIndex {
 				continue
 			}
 			if isUnique, ok := indexDoc["unique"].(bool); ok {

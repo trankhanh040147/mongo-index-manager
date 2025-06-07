@@ -12,7 +12,7 @@ import (
 
 type IndexCreateBodyValidate struct {
 	Collection string             `json:"collection" validate:"required"`
-	Name       string             `json:"name" validate:"omitempty,max=100"`
+	Name       string             `json:"name" validate:"omitempty,max=100,ne=_id_"`
 	Options    IndexCreateOption  `json:"options" validate:"required"`
 	Keys       []IndexCreateKey   `json:"keys" validate:"required,min=1,unique=Field,dive"`
 	DatabaseId primitive.ObjectID `json:"database_id" validate:"required"`
@@ -24,7 +24,7 @@ type IndexCreateOption struct {
 }
 
 type IndexCreateKey struct {
-	Field string `json:"field" validate:"required"`
+	Field string `json:"field" validate:"required,ne=_id"`
 	Value int32  `json:"value" validate:"required,oneof=1 -1"`
 }
 
@@ -100,7 +100,7 @@ type IndexListByCollectionResponseKey struct {
 }
 
 type IndexUpdateBodyValidate struct {
-	Name    string            `json:"name" validate:"omitempty,max=100"`
+	Name    string            `json:"name" validate:"omitempty,max=100,ne=_id_"`
 	Options IndexUpdateOption `json:"options" validate:"required"`
 	Keys    []IndexUpdateKey  `json:"keys" validate:"required,min=1,unique=Field,dive"`
 }
@@ -111,7 +111,7 @@ type IndexUpdateOption struct {
 }
 
 type IndexUpdateKey struct {
-	Field string `json:"field" validate:"required"`
+	Field string `json:"field" validate:"required,ne=_id"`
 	Value int32  `json:"value" validate:"required,oneof=1 -1"`
 }
 
