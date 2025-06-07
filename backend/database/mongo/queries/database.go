@@ -27,6 +27,7 @@ type DatabaseQuery interface {
 	GetTotalByQuery(query string) (total int64, err error)
 	CreateOne(database models.Database) (newDatabase *models.Database, err error)
 	UpdateInfoById(id primitive.ObjectID, request DatabaseUpdateInfoByIdRequest) error
+	DeleteById(id primitive.ObjectID) error
 }
 
 type databaseQuery struct {
@@ -214,4 +215,18 @@ func (q *databaseQuery) GetAll(opts ...OptionsQuery) ([]models.Database, error) 
 		return nil, response.NewError(fiber.StatusInternalServerError)
 	}
 	return data, nil
+}
+
+func (q *databaseQuery) DeleteById(id primitive.ObjectID) error {
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	result, err := q.collection.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		logger.Error().Err(err).Str("function", "DeleteById").Str("functionInline", "q.collection.DeleteOne").Msg("databaseQuery")
+		return response.NewError(fiber.StatusInternalServerError)
+	}
+	if result.DeletedCount == 0 {
+		return response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: respErr.ErrResourceNotFound})
+	}
+	return nil
 }

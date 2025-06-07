@@ -33,6 +33,7 @@ type IndexQuery interface {
 	CreateOne(index models.Index) (newIndex *models.Index, err error)
 	UpdateNameKeySignatureOptionsKeysById(id primitive.ObjectID, name, keySignature string, indexOpt models.IndexOption, keys []models.IndexKey) error
 	DeleteById(id primitive.ObjectID) error
+	DeleteByDatabaseId(databaseId primitive.ObjectID) error
 }
 
 type indexQuery struct {
@@ -371,4 +372,18 @@ func (q *indexQuery) GetCollectionsByDatabaseIdAndQuery(databaseId primitive.Obj
 		return nil, response.NewError(fiber.StatusInternalServerError)
 	}
 	return data, nil
+}
+
+func (q *indexQuery) DeleteByDatabaseId(databaseId primitive.ObjectID) error {
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	result, err := q.collection.DeleteMany(ctx, bson.M{"database_id": databaseId})
+	if err != nil {
+		logger.Error().Err(err).Str("function", "DeleteByDatabaseId").Str("functionInline", "q.collection.DeleteMany").Msg("indexQuery")
+		return response.NewError(fiber.StatusInternalServerError)
+	}
+	if result.DeletedCount == 0 {
+		return response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: respErr.ErrResourceNotFound})
+	}
+	return nil
 }

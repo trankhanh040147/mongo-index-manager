@@ -35,6 +35,7 @@ func (r *database) root() {
 	router.Post("/", r.controller.Create)
 	router.Post("/list", r.controller.List)
 	router.Put("/:id/", r.controller.Update)
+	router.Delete("/:id/", r.controller.Delete)
 }
 
 func (r *database) collection() {

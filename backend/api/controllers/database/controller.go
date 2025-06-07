@@ -23,6 +23,7 @@ type Controller interface {
 	Create(ctx *fiber.Ctx) error
 	List(ctx *fiber.Ctx) error
 	Update(ctx *fiber.Ctx) error
+	Delete(ctx *fiber.Ctx) error
 	ListCollections(ctx *fiber.Ctx) error
 }
 
@@ -266,4 +267,38 @@ func (ctrl *controller) ListCollections(ctx *fiber.Ctx) error {
 	}
 	pagination.SetTotal(int64(<-totalChan))
 	return response.NewArrayWithPagination(ctx, result, pagination)
+}
+
+func (ctrl *controller) Delete(ctx *fiber.Ctx) error {
+	id, err := primitive.ObjectIDFromHex(ctx.Params("id"))
+	if err != nil {
+		return response.New(ctx, response.Options{Code: fiber.StatusNotFound, Data: respErr.ErrResourceNotFound})
+	}
+	queryOption := queries.NewOptions()
+	databaseQuery := queries.NewDatabase(ctx.Context())
+	queryOption.SetOnlyFields("_id")
+	if _, err = databaseQuery.GetById(id, queryOption); err != nil {
+		if e := new(response.Error); errors.As(err, &e) && e.Code == fiber.StatusNotFound {
+			return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
+		}
+		return err
+	}
+	// todo: check whether there is sync running
+	if err = databaseQuery.DeleteById(id); err != nil {
+		return err
+	}
+	var (
+		totalTask = 1
+		errorChan = make(chan error, totalTask)
+	)
+	go func() {
+		err = queries.NewIndex(ctx.Context()).DeleteByDatabaseId(id)
+		errorChan <- err
+	}()
+	for range totalTask {
+		if err = <-errorChan; err != nil {
+			return err
+		}
+	}
+	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
 }
