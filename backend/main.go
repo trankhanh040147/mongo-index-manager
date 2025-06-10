@@ -18,6 +18,8 @@ import (
 	"doctor-manager-api/common/response"
 	respErr "doctor-manager-api/common/response/error"
 	"doctor-manager-api/database/mongo"
+	"doctor-manager-api/job"
+	jobqueue "doctor-manager-api/utilities/job_queue"
 	"doctor-manager-api/utilities/jwt"
 )
 
@@ -33,7 +35,7 @@ func main() {
 		JSONEncoder:  sonic.Marshal,
 	})
 	jwt.New(cfg.TokenPrivateKey, cfg.TokenPublicKey).InitGlobal()
-
+	initJobQueue()
 	addMiddleware(app)
 	addV1Route(app)
 	handleURLNotFound(app)
@@ -74,4 +76,20 @@ func addV1Route(app *fiber.App) {
 	routers.NewAuth(route).V1()
 	routers.NewDatabase(route).V1()
 	routers.NewIndex(route).V1()
+}
+
+func initJobQueue() {
+	serv, err := jobqueue.New(cfg.RedisAddress, jobqueue.Option{
+		DialTimeout:  cfg.RedisDialTimeout,
+		ReadTimeout:  cfg.RedisReadTimeout,
+		WriteTimeout: cfg.RedisWriteTimeout,
+		PoolSize:     cfg.RedisPoolSize,
+		Concurrency:  cfg.JobConcurrency,
+	})
+	if err != nil {
+		logging.GetLogger().Fatal().Err(err).Str("function", "initJobQueue").Str("functionInline", "jobqueue.New").Msg("main")
+	}
+	serv.InitGlobal()
+	job.SetupHandler(serv)
+	serv.Start()
 }
