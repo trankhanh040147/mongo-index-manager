@@ -240,12 +240,11 @@ func (ctrl *controller) Update(ctx *fiber.Ctx) error {
 			return response.NewError(fiber.StatusConflict, response.ErrorOptions{Data: respErr.ErrResourceConflict})
 		}
 	}
-	if (database.Uri != requestBody.Uri && requestBody.IsTestConnection) || requestBody.IsSyncIndex {
+	if database.Uri != requestBody.Uri && requestBody.IsTestConnection {
 		if _, err = mongodb.New(requestBody.Uri); err != nil {
 			logger.Error().Err(err).Str("function", "Update").Str("functionInline", "mongodb.New").Msg("database-controller")
 			return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot connect to database"})
 		}
-		// TODO: handle sync indexes option
 	}
 	if err = databaseQuery.UpdateInfoById(id, queries.DatabaseUpdateInfoByIdRequest{
 		Name:        requestBody.Name,

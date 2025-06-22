@@ -5,7 +5,9 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v2"
+	"github.com/hibiken/asynq"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"doctor-manager-api/api/serializers"
@@ -15,6 +17,8 @@ import (
 	respErr "doctor-manager-api/common/response/error"
 	"doctor-manager-api/database/mongo/models"
 	"doctor-manager-api/database/mongo/queries"
+	"doctor-manager-api/job"
+	jobqueue "doctor-manager-api/utilities/job_queue"
 	"doctor-manager-api/utilities/mongodb"
 )
 
@@ -551,63 +555,16 @@ func (ctrl *controller) SyncByCollections(ctx *fiber.Ctx) error {
 		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "dbClient.GetIndexesByDbNameAndCollections").Msg("index-controller")
 		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Can't get indexes from database"})
 	}
-	mapIndexClient := make(map[string]map[string]mongodb.Index)
-	for _, index := range clientIndexes {
-		if _, exists := mapIndexClient[index.Collection]; !exists {
-			mapIndexClient[index.Collection] = make(map[string]mongodb.Index)
-		}
-		mapIndexClient[index.Collection][index.KeySignature] = index
-	}
-	var (
-		missingIndexes   = make([]mongodb.Index, 0)
-		redundantIndexes = make([]mongodb.Index, 0)
-	)
-	for _, collection := range requestBody.Collections {
-		for _, index := range mapIndexManager[collection] {
-			keys := make([]mongodb.IndexKey, len(index.Keys))
-			for i, key := range index.Keys {
-				keys[i].Field = key.Field
-				keys[i].Value = key.Value
-			}
-			indexItem := mongodb.Index{
-				Collection: collection,
-				Options: mongodb.IndexOption{
-					ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
-					IsUnique:           index.Options.IsUnique,
-				},
-				Name: index.Name,
-				Keys: keys,
-			}
-			if _, exists := mapIndexClient[collection][index.KeySignature]; exists {
-				delete(mapIndexClient[collection], index.KeySignature)
-			} else {
-				missingIndexes = append(missingIndexes, indexItem)
-			}
-		}
-		for _, index := range mapIndexClient[collection] {
-			keys := make([]mongodb.IndexKey, len(index.Keys))
-			for i, key := range index.Keys {
-				keys[i].Field = key.Field
-				keys[i].Value = key.Value
-			}
-			redundantIndexes = append(redundantIndexes, mongodb.Index{
-				Collection: collection,
-				Options: mongodb.IndexOption{
-					ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
-					IsUnique:           index.Options.IsUnique,
-				},
-				Name: index.Name,
-				Keys: keys,
-			})
-		}
-	}
-	if err = dbClient.RemoveIndexes(database.DBName, redundantIndexes); err != nil {
-		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "dbClient.RemoveIndexes").Msg("index-controller")
-		return response.New(ctx, response.Options{Code: fiber.StatusInternalServerError, Data: "Can't remove indexes"})
-	}
-	if err = dbClient.CreateIndexes(database.DBName, missingIndexes); err != nil {
-		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "dbClient.CreateIndexes").Msg("index-controller")
-		return response.New(ctx, response.Options{Code: fiber.StatusInternalServerError, Data: "Can't create indexes"})
+	payloadData, _ := sonic.Marshal(job.PayloadSyncIndexByCollections{
+		Collections:   requestBody.Collections,
+		ClientIndexes: clientIndexes,
+		ServerIndexes: indexes,
+		Uri:           database.Uri,
+		DBName:        database.DBName,
+	})
+	if _, err = jobqueue.GetGlobal().EnqueueTask(asynq.NewTask(jobqueue.TaskTypeSyncIndexByCollection, payloadData)); err != nil {
+		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "jobQueue.EnqueueTask").Msg("index-controller")
+		return response.NewError(fiber.StatusInternalServerError)
 	}
 	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
 }

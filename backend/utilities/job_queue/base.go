@@ -5,11 +5,10 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
-
-	"doctor-manager-api/common/logging"
 )
 
 const (
+	defaultMaxRetry     = 3
 	defaultConcurrency  = 10
 	defaultPoolSize     = 10
 	defaultDialTimeout  = 5 * time.Second
@@ -19,8 +18,8 @@ const (
 
 var (
 	global        Service
-	logger        = logging.GetLogger()
 	defaultOption = Option{
+		MaxRetry:     defaultMaxRetry,
 		Concurrency:  defaultConcurrency,
 		PoolSize:     defaultPoolSize,
 		DialTimeout:  defaultDialTimeout,
@@ -34,6 +33,7 @@ type Service interface {
 	Stop()
 	Start()
 	HandleFunc(pattern string, handler func(context.Context, *asynq.Task) error)
+	EnqueueTask(task *asynq.Task, opts ...asynq.Option) (taskInfo *asynq.TaskInfo, err error)
 }
 
 type service struct {
@@ -48,6 +48,7 @@ type Option struct {
 	DialTimeout  time.Duration
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
+	MaxRetry     int
 	PoolSize     int
 	Concurrency  int
 }
@@ -98,6 +99,9 @@ func (o *Option) set(opt Option) {
 	}
 	if opt.Concurrency > 0 {
 		o.Concurrency = opt.Concurrency
+	}
+	if opt.MaxRetry > 0 {
+		o.MaxRetry = opt.MaxRetry
 	}
 }
 

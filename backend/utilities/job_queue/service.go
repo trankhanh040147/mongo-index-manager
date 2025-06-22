@@ -27,3 +27,8 @@ func (s *service) Stop() {
 	s.server.Shutdown()
 	_ = s.client.Close()
 }
+
+func (s *service) EnqueueTask(task *asynq.Task, opts ...asynq.Option) (*asynq.TaskInfo, error) {
+	opts = append(opts, asynq.MaxRetry(s.opt.MaxRetry))
+	return s.client.Enqueue(task, opts...)
+}

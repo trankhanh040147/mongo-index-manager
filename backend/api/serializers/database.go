@@ -67,7 +67,6 @@ type DatabaseUpdateBodyValidate struct {
 	Uri              string `json:"uri" validate:"required,databaseUri"`
 	DBName           string `json:"db_name" validate:"required"`
 	IsTestConnection bool   `json:"is_test_connection" validate:"omitempty"`
-	IsSyncIndex      bool   `json:"is_sync_index" validate:"omitempty"`
 }
 
 func (v *DatabaseUpdateBodyValidate) Validate() error {

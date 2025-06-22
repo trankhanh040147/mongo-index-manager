@@ -91,5 +91,5 @@ func initJobQueue() {
 	}
 	serv.InitGlobal()
 	job.SetupHandler(serv)
-	serv.Start()
+	go serv.Start()
 }
