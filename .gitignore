@@ -107,7 +107,7 @@ fabric.properties
 ### Example user template
 
 # IntelliJ project files
-../.idea
+.idea
 *.iml
 out
 gen
@@ -122,13 +122,9 @@ tmp
 
 # visual code
 .vscode
-backend/.env
+.env
 Makefile
 
 certs
 .pre-commit-config.yaml
 /venv
-/.idea/vcs.xml
-/.idea/modules.xml
-/.idea
-/backend/.idea
