@@ -15,6 +15,7 @@ type UtilityService interface {
 	GetAuthTokenCollection() (coll *mongo.Collection)
 	GetDatabaseCollection() (coll *mongo.Collection)
 	GetIndexCollection() (coll *mongo.Collection)
+	GetSyncCollection() (coll *mongo.Collection)
 }
 
 type utilityService struct{}
@@ -50,4 +51,8 @@ func (s *utilityService) GetDatabaseCollection() (coll *mongo.Collection) {
 
 func (s *utilityService) GetIndexCollection() (coll *mongo.Collection) {
 	return s.getManagerDb().Collection(new(models.Index).CollectionName())
+}
+
+func (s *utilityService) GetSyncCollection() (coll *mongo.Collection) {
+	return s.getManagerDb().Collection(new(models.Sync).CollectionName())
 }

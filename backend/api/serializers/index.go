@@ -196,3 +196,16 @@ type IndexCompareByDatabaseIndexKey struct {
 	Field string `json:"field"`
 	Value int32  `json:"value"`
 }
+
+type IndexSyncByCollectionsValidate struct {
+	Collections []string           `json:"collections" validate:"required,min=1,unique"`
+	DatabaseId  primitive.ObjectID `json:"database_id" validate:"required"`
+}
+
+func (v *IndexSyncByCollectionsValidate) Validate() error {
+	validateEngine := validator.GetValidateEngine()
+	if err := validateEngine.Struct(v); err != nil {
+		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: validator.ParseValidateError(err)})
+	}
+	return nil
+}

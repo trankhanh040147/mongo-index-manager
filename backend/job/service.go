@@ -5,17 +5,20 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/hibiken/asynq"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"doctor-manager-api/database/mongo/models"
+	"doctor-manager-api/database/mongo/queries"
 	"doctor-manager-api/utilities/mongodb"
 )
 
 type PayloadSyncIndexByCollections struct {
-	Collections   []string        `json:"collections"`
-	ClientIndexes []mongodb.Index `json:"client_indexes"`
-	ServerIndexes []models.Index  `json:"server_indexes"`
-	Uri           string          `json:"uri"`
-	DBName        string          `json:"db_name"`
+	Collections   []string           `json:"collections"`
+	ClientIndexes []mongodb.Index    `json:"client_indexes"`
+	ServerIndexes []models.Index     `json:"server_indexes"`
+	Uri           string             `json:"uri"`
+	DBName        string             `json:"db_name"`
+	SyncId        primitive.ObjectID `json:"sync_id"`
 }
 
 func handleSyncIndexByCollection(ctx context.Context, t *asynq.Task) error {
@@ -93,6 +96,9 @@ func handleSyncIndexByCollection(ctx context.Context, t *asynq.Task) error {
 	}
 	if err = dbClient.CreateIndexes(payload.DBName, missingIndexes); err != nil {
 		logger.Error().Err(err).Str("function", "handleSyncIndexByCollection").Str("functionInline", "dbClient.CreateIndexes").Msg("job-controller")
+		return asynq.SkipRetry
+	}
+	if err = queries.NewSync(ctx).UpdateIsFinishedById(payload.SyncId, true); err != nil {
 		return asynq.SkipRetry
 	}
 	return nil

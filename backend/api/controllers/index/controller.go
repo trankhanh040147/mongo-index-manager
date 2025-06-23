@@ -531,6 +531,16 @@ func (ctrl *controller) SyncByCollections(ctx *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	syncQuery := queries.NewSync(ctx.Context())
+	queryOption.SetOnlyFields("_id")
+	if _, err = syncQuery.GetByDatabaseIdAndIsFinished(requestBody.DatabaseId, false, queryOption); err != nil {
+		if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
+			return err
+		}
+	} else {
+		return response.New(ctx, response.Options{Code: fiber.StatusConflict, Data: respErr.ErrResourceConflict})
+	}
+
 	indexQuery := queries.NewIndex(ctx.Context())
 	queryOption.SetOnlyFields("options", "keys", "key_signature", "collection", "name")
 	indexes, err := indexQuery.GetByDatabaseIdAndCollections(requestBody.DatabaseId, requestBody.Collections, queryOption)
@@ -555,12 +565,22 @@ func (ctrl *controller) SyncByCollections(ctx *fiber.Ctx) error {
 		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "dbClient.GetIndexesByDbNameAndCollections").Msg("index-controller")
 		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Can't get indexes from database"})
 	}
+	sync, err := syncQuery.CreateOne(models.Sync{
+		Error:       "",
+		Collections: requestBody.Collections,
+		DatabaseID:  requestBody.DatabaseId,
+		IsFinished:  false,
+	})
+	if err != nil {
+		return err
+	}
 	payloadData, _ := sonic.Marshal(job.PayloadSyncIndexByCollections{
 		Collections:   requestBody.Collections,
 		ClientIndexes: clientIndexes,
 		ServerIndexes: indexes,
 		Uri:           database.Uri,
 		DBName:        database.DBName,
+		SyncId:        sync.Id,
 	})
 	if _, err = jobqueue.GetGlobal().EnqueueTask(asynq.NewTask(jobqueue.TaskTypeSyncIndexByCollection, payloadData)); err != nil {
 		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "jobQueue.EnqueueTask").Msg("index-controller")
