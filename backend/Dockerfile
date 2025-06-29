@@ -1,4 +1,4 @@
-FROM golang:1.23.9-alpine3.21 AS builder
+FROM golang:1.24.4-alpine3.22 AS builder
 
 # `boilerplate` should be replaced with your project name
 WORKDIR /go/src/code
@@ -12,7 +12,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o app .
 
 
-FROM alpine:3.21.3
+FROM alpine:3.22
 
 # Create and enable user
 ARG USER_NAME=alpine
