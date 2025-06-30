@@ -3,7 +3,11 @@ FROM golang:1.24.4-alpine3.22 AS builder
 # `boilerplate` should be replaced with your project name
 WORKDIR /go/src/code
 
-# Copy all the Code and stuff to compile everything
+RUN apk add --no-cache openssl
+
+RUN mkdir certs && \
+    openssl genpkey -algorithm Ed25519 -out certs/private.pem && \
+    openssl pkey -in certs/private.pem -pubout -out certs/public.pem
 COPY go.* ./
 # Downloads all the dependencies in advance (could be left out, but it's more clear this way)
 RUN go mod download
@@ -22,5 +26,6 @@ USER ${USER_NAME}
 
 # Moving the binary to the 'final Image' to make it smaller
 WORKDIR /app
+COPY --from=builder /go/src/code/certs ./certs
 COPY --from=builder /go/src/code/app .
-CMD ["sh", "-c", "./app"]
+CMD ["./app"]
