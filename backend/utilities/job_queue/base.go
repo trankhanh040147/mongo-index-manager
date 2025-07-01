@@ -54,20 +54,24 @@ type Option struct {
 }
 
 func New(redisAddr string, opts ...Option) (Service, error) {
+	redisConnOpt, err := asynq.ParseRedisURI(redisAddr)
+	if err != nil {
+		return nil, err
+	}
 	opt := defaultOption
 	if len(opts) > 0 {
 		opt.set(opts[0])
 	}
+	if redisClientOpt, ok := redisConnOpt.(asynq.RedisClientOpt); ok {
+		redisClientOpt.DialTimeout = opt.DialTimeout
+		redisClientOpt.ReadTimeout = opt.ReadTimeout
+		redisClientOpt.WriteTimeout = opt.WriteTimeout
+		redisClientOpt.PoolSize = opt.PoolSize
+	}
 	serv := &service{
-		client: asynq.NewClient(asynq.RedisClientOpt{
-			Addr:         redisAddr,
-			DialTimeout:  opt.DialTimeout,
-			ReadTimeout:  opt.ReadTimeout,
-			WriteTimeout: opt.WriteTimeout,
-			PoolSize:     opt.PoolSize,
-		}),
+		client: asynq.NewClient(redisConnOpt),
 		server: asynq.NewServer(
-			asynq.RedisClientOpt{Addr: redisAddr},
+			redisConnOpt,
 			asynq.Config{
 				Concurrency: opt.Concurrency,
 				Queues: map[string]int{
