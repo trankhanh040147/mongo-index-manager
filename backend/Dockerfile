@@ -6,8 +6,8 @@ WORKDIR /go/src/code
 RUN apk add --no-cache openssl
 
 # Generate the Ed25519 private and public keys in the 'certs' directory
-RUN mkdir certs &amp;&amp; \
-    openssl genpkey -algorithm Ed25519 -out certs/private.pem &amp;&amp; \
+RUN mkdir certs && \
+    openssl genpkey -algorithm Ed25519 -out certs/private.pem && \
     openssl pkey -in certs/private.pem -pubout -out certs/public.pem
 
 # Copy go modules files and download dependencies
@@ -29,7 +29,7 @@ RUN apk add --no-cache su-exec
 # Create a non-root user for security
 ARG USER_NAME=alpine
 ARG USER_ID=1000
-RUN addgroup ${USER_NAME} &amp;&amp; adduser --system -u ${USER_ID} -g ${USER_NAME} --no-create-home ${USER_NAME}
+RUN addgroup ${USER_NAME} && adduser --system -u ${USER_ID} -g ${USER_NAME} --no-create-home ${USER_NAME}
 # DO NOT switch user here. The container will start as root to fix permissions.
 
 WORKDIR /app
