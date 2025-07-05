@@ -128,3 +128,5 @@ Makefile
 certs
 .pre-commit-config.yaml
 /venv
+
+*.env.local
