@@ -130,5 +130,3 @@ certs
 /venv
 
 *.env.local
-
-frontend/node_modules

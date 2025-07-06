@@ -1,0 +1,924 @@
+openapi: 3.0.3
+info:
+  title: "Doctor Manager API"
+  description: "A RESTful API for managing databases, collections, and indexes, likely for a data comparison and synchronization tool. It includes user authentication and profile management."
+  version: "1.0.0"
+servers:
+  - url: "/api/v1"
+    description: "Local development server"
+tags:
+  - name: Auth
+    description: "Endpoints for user authentication, including registration, login, and token management."
+  - name: Account
+    description: "Endpoints for managing user profiles."
+  - name: Databases
+    description: "Operations to manage database connections and their collections."
+  - name: Indexes
+    description: "Operations to manage, compare, and synchronize database indexes."
+security:
+  - bearerAuth: []
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: "Register a new user"
+      description: "Creates a new user account with the provided username, email, and password."
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRegister'
+      responses:
+        '201':
+          description: "User registered successfully."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: "Conflict - Username or email already exists."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error_code: 40901
+                status_code: 409
+                error: "User with this email already exists"
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: "Log in a user"
+      description: "Authenticates a user with their identity (username or email) and password, returning JWT access and refresh tokens."
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLogin'
+      responses:
+        '200':
+          description: "Login successful. Returns access and refresh tokens."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  error_code:
+                    type: integer
+                    example: 0
+                  data:
+                    $ref: '#/components/schemas/AuthLoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/refresh-token:
+    post:
+      tags:
+        - Auth
+      summary: "Refresh access token"
+      description: "Generates a new pair of access and refresh tokens using a valid refresh token."
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: "Tokens refreshed successfully."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  error_code:
+                    type: integer
+                    example: 0
+                  data:
+                    $ref: '#/components/schemas/AuthRefreshTokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/profile:
+    get:
+      tags:
+        - Account
+      summary: "Get user profile"
+      description: "Retrieves the profile information for the currently authenticated user."
+      responses:
+        '200':
+          description: "User profile retrieved successfully."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  error_code:
+                    type: integer
+                    example: 0
+                  data:
+                    $ref: '#/components/schemas/AuthGetProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags:
+        - Account
+      summary: "Update user profile"
+      description: "Updates the profile information (first name, last name, avatar) for the currently authenticated user."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthUpdateProfile'
+      responses:
+        '200':
+          description: "Profile updated successfully."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  error_code:
+                    type: integer
+                    example: 0
+                  data:
+                    $ref: '#/components/schemas/AuthGetProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /databases:
+    post:
+      tags:
+        - Databases
+      summary: "Create a new database connection"
+      description: "Adds a new database connection record to the system."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatabaseCreate'
+      responses:
+        '201':
+          description: "Database connection created successfully."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 201
+                  error_code:
+                    type: integer
+                    example: 0
+                  data:
+                    $ref: '#/components/schemas/Database'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /databases/list:
+    post:
+      tags:
+        - Databases
+      summary: "List database connections"
+      description: "Retrieves a paginated list of database connections."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListRequest'
+      responses:
+        '200':
+          description: "A list of database connections."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  error_code:
+                    type: integer
+                    example: 0
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Database'
+                  extra:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                        example: 1
+                      limit:
+                        type: integer
+                        example: 10
+                      total:
+                        type: integer
+                        example: 50
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /databases/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: "The ID of the database connection."
+        schema:
+          type: string
+          format: objectid
+    get:
+      tags:
+        - Databases
+      summary: "Get a database connection"
+      description: "Retrieves details for a specific database connection by its ID."
+      responses:
+        '200':
+          description: "Database connection details."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  error_code:
+                    type: integer
+                    example: 0
+                  data:
+                    $ref: '#/components/schemas/Database'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Databases
+      summary: "Update a database connection"
+      description: "Updates the details of a specific database connection."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatabaseUpdate'
+      responses:
+        '200':
+          description: "Database connection updated successfully."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  error_code:
+                    type: integer
+                    example: 0
+                  data:
+                    $ref: '#/components/schemas/Database'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Databases
+      summary: "Delete a database connection"
+      description: "Removes a database connection from the system."
+      responses:
+        '204':
+          description: "Database connection deleted successfully."
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /databases/collections/list:
+    post:
+      tags:
+        - Databases
+      summary: "List collections in a database"
+      description: "Retrieves a list of collections for a specified database connection."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                database_id:
+                  type: string
+                  description: "The ID of the database to list collections from."
+                  example: "60d5ec49e73f9a001f7ea8e4"
+              required:
+                - database_id
+      responses:
+        '200':
+          description: "A list of collection names."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  error_code:
+                    type: integer
+                    example: 0
+                  data:
+                    type: array
+                    items:
+                      type: string
+                      example: "users"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /indexes:
+    post:
+      tags:
+        - Indexes
+      summary: "Create an index"
+      description: "Creates a new index on a specified collection."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndexCreate'
+      responses:
+        '201':
+          description: "Index created successfully."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 201
+                  error_code:
+                    type: integer
+                    example: 0
+                  data:
+                    $ref: '#/components/schemas/Index'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /indexes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: "The ID of the index."
+        schema:
+          type: string
+          format: objectid
+    get:
+      tags:
+        - Indexes
+      summary: "Get an index"
+      description: "Retrieves details for a specific index by its ID."
+      responses:
+        '200':
+          description: "Index details."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  error_code:
+                    type: integer
+                    example: 0
+                  data:
+                    $ref: '#/components/schemas/Index'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Indexes
+      summary: "Update an index"
+      description: "Updates the details of a specific index."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndexUpdate'
+      responses:
+        '200':
+          description: "Index updated successfully."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  error_code:
+                    type: integer
+                    example: 0
+                  data:
+                    $ref: '#/components/schemas/Index'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Indexes
+      summary: "Delete an index"
+      description: "Removes an index from a collection."
+      responses:
+        '204':
+          description: "Index deleted successfully."
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /indexes/list-by-collection:
+    post:
+      tags:
+        - Indexes
+      summary: "List indexes by collection"
+      description: "Retrieves a list of all indexes for a given collection."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                collection_id:
+                  type: string
+                  description: "The ID of the collection."
+                  example: "60d5ec49e73f9a001f7ea8e5"
+              required:
+                - collection_id
+      responses:
+        '200':
+          description: "A list of indexes."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  error_code:
+                    type: integer
+                    example: 0
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Index'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /indexes/compare-by-collections:
+    post:
+      tags:
+        - Indexes
+      summary: "Compare indexes between two collections"
+      description: "Compares the indexes of a source collection against a target collection and reports the differences."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompareByCollectionsRequest'
+      responses:
+        '200':
+          description: "Comparison result."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  error_code:
+                    type: integer
+                    example: 0
+                  data:
+                    $ref: '#/components/schemas/ComparisonResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /indexes/compare-by-database:
+    post:
+      tags:
+        - Indexes
+      summary: "Compare indexes between two databases"
+      description: "Compares all indexes across all collections between a source and target database."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompareByDatabaseRequest'
+      responses:
+        '200':
+          description: "Comparison result."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                    example: 200
+                  error_code:
+                    type: integer
+                    example: 0
+                  data:
+                    $ref: '#/components/schemas/ComparisonResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /indexes/sync-by-collections:
+    post:
+      tags:
+        - Indexes
+      summary: "Synchronize indexes between collections"
+      description: "Synchronizes the indexes from a source collection to a target collection based on a comparison."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncByCollectionsRequest'
+      responses:
+        '200':
+          description: "Synchronization successful."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Enter your JWT access token in the format: Bearer <token>"
+  schemas:
+    AuthRegister:
+      type: object
+      properties:
+        username:
+          type: string
+          description: "Unique username for the account."
+          example: "johndoe"
+        email:
+          type: string
+          format: email
+          description: "Unique email address for the account."
+          example: "john.doe@example.com"
+        password:
+          type: string
+          format: password
+          description: "Password for the account (minimum 8 characters)."
+          example: "strong-password-123"
+      required:
+        - username
+        - email
+        - password
+    AuthLogin:
+      type: object
+      properties:
+        identity:
+          type: string
+          description: "The user's username or email address."
+          example: "john.doe@example.com"
+        password:
+          type: string
+          format: password
+          description: "The user's password."
+          example: "strong-password-123"
+      required:
+        - identity
+        - password
+    AuthLoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: "JWT token for authenticating subsequent requests."
+        refresh_token:
+          type: string
+          description: "JWT token for obtaining a new access token."
+    AuthRefreshTokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: "A new JWT access token."
+        refresh_token:
+          type: string
+          description: "A new JWT refresh token."
+    AuthGetProfileResponse:
+      type: object
+      properties:
+        username:
+          type: string
+          example: "johndoe"
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        first_name:
+          type: string
+          example: "John"
+        last_name:
+          type: string
+          example: "Doe"
+        avatar:
+          type: string
+          format: uri
+          example: "https://example.com/avatars/johndoe.png"
+    AuthUpdateProfile:
+      type: object
+      properties:
+        first_name:
+          type: string
+          description: "The user's first name."
+          example: "John"
+        last_name:
+          type: string
+          description: "The user's last name."
+          example: "Doe"
+        avatar:
+          type: string
+          format: uri
+          description: "URL to the user's avatar image."
+          example: "https://example.com/avatars/johndoe_new.png"
+    Database:
+      type: object
+      properties:
+        id:
+          type: string
+          format: objectid
+          example: "60d5ec49e73f9a001f7ea8e4"
+        name:
+          type: string
+          example: "Production Database"
+        connection_string:
+          type: string
+          example: "mongodb://user:pass@host:port/dbname"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    DatabaseCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "A friendly name for the database connection."
+          example: "Staging Database"
+        connection_string:
+          type: string
+          description: "The MongoDB connection URI."
+          example: "mongodb://user:pass@staging-host:27017/staging_db"
+      required:
+        - name
+        - connection_string
+    DatabaseUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "A new friendly name for the database connection."
+          example: "Staging Database V2"
+        connection_string:
+          type: string
+          description: "A new MongoDB connection URI."
+          example: "mongodb://user:pass@new-staging-host:27017/staging_db"
+    Index:
+      type: object
+      properties:
+        id:
+          type: string
+          format: objectid
+          example: "60d5ec49e73f9a001f7ea8f5"
+        collection_id:
+          type: string
+          format: objectid
+          example: "60d5ec49e73f9a001f7ea8e5"
+        name:
+          type: string
+          example: "email_1"
+        keys:
+          type: object
+          description: "The fields included in the index and their sort order (1 for ascending, -1 for descending)."
+          example:
+            email: 1
+        unique:
+          type: boolean
+          example: true
+    IndexCreate:
+      type: object
+      properties:
+        collection_id:
+          type: string
+          format: objectid
+          description: "The ID of the collection to create the index on."
+          example: "60d5ec49e73f9a001f7ea8e5"
+        name:
+          type: string
+          description: "The name of the index."
+          example: "user_email_idx"
+        keys:
+          type: object
+          description: "The fields to index."
+          example:
+            email: 1
+        unique:
+          type: boolean
+          default: false
+      required:
+        - collection_id
+        - name
+        - keys
+    IndexUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "user_email_unique_idx"
+        unique:
+          type: boolean
+          example: true
+    CompareByCollectionsRequest:
+      type: object
+      properties:
+        source_collection_id:
+          type: string
+          format: objectid
+        target_collection_id:
+          type: string
+          format: objectid
+      required:
+        - source_collection_id
+        - target_collection_id
+    CompareByDatabaseRequest:
+      type: object
+      properties:
+        source_database_id:
+          type: string
+          format: objectid
+        target_database_id:
+          type: string
+          format: objectid
+      required:
+        - source_database_id
+        - target_database_id
+    SyncByCollectionsRequest:
+      type: object
+      properties:
+        source_collection_id:
+          type: string
+          format: objectid
+        target_collection_id:
+          type: string
+          format: objectid
+      required:
+        - source_collection_id
+        - target_collection_id
+    ComparisonResult:
+      type: object
+      properties:
+        only_in_source:
+          type: array
+          items:
+            $ref: '#/components/schemas/Index'
+        only_in_target:
+          type: array
+          items:
+            $ref: '#/components/schemas/Index'
+        different:
+          type: array
+          items:
+            type: object
+            properties:
+              source:
+                $ref: '#/components/schemas/Index'
+              target:
+                $ref: '#/components/schemas/Index'
+    ListRequest:
+      type: object
+      properties:
+        page:
+          type: integer
+          default: 1
+        limit:
+          type: integer
+          default: 10
+    ErrorResponse:
+      type: object
+      description: "Standard error response format for the API."
+      properties:
+        error_code:
+          type: integer
+          description: "Application-specific error code for programmatic handling."
+          example: 40001
+        status_code:
+          type: integer
+          description: "HTTP status code."
+          example: 400
+        error:
+          description: "A human-readable error message or a structured object with validation details."
+          oneOf:
+            - type: string
+              example: "Invalid input provided"
+            - type: object
+              additionalProperties: true
+              example:
+                field: "email"
+                error: "must be a valid email address"
+    SuccessResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 200
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+              example: "Operation completed successfully"
+  responses:
+    BadRequest:
+      description: "Bad Request - The server cannot or will not process the request due to something that is perceived to be a client error (e.g., malformed request syntax, invalid request message framing, or deceptive request routing)."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: 0
+            status_code: 400
+            error: "Invalid request body"
+    Unauthorized:
+      description: "Unauthorized - The client must authenticate itself to get the requested response. The token is missing, invalid, or expired."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: 0
+            status_code: 401
+            error: "Token is invalid or expired"
+    NotFound:
+      description: "Not Found - The server can not find the requested resource."
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: 40401
+            status_code: 404
+            error: "Resource not found"
