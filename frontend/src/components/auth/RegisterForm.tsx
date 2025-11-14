@@ -6,32 +6,33 @@ import { Form, Input, Button, Space } from 'antd'
 import { UserOutlined, MailOutlined, LockOutlined } from '@ant-design/icons'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { registerSchema, type RegisterFormData } from '../../utils/validationSchemas'
 
 export function RegisterForm() {
   const navigate = useNavigate()
   const { register } = useAuth()
-  const [form] = Form.useForm()
+  const [form] = Form.useForm<RegisterFormData & { confirmPassword: string }>()
 
-  const handleSubmit = async (values: {
-    username: string
-    email: string
-    password: string
-    confirmPassword: string
-  }) => {
-    if (values.password !== values.confirmPassword) {
-      form.setFields([
-        {
-          name: 'confirmPassword',
-          errors: ['Passwords do not match!'],
-        },
-      ])
+  const handleSubmit = async (values: RegisterFormData & { confirmPassword: string }) => {
+    // Validate with Zod
+    const validationResult = registerSchema.safeParse(values)
+    if (!validationResult.success) {
+      const errors = validationResult.error.flatten().fieldErrors
+      Object.keys(errors).forEach((key) => {
+        form.setFields([
+          {
+            name: key as keyof RegisterFormData,
+            errors: errors[key as keyof typeof errors],
+          },
+        ])
+      })
       return
     }
 
     const result = await register({
-      username: values.username,
-      email: values.email,
-      password: values.password,
+      username: validationResult.data.username,
+      email: validationResult.data.email,
+      password: validationResult.data.password,
     })
 
     if (result.success) {
@@ -49,7 +50,21 @@ export function RegisterForm() {
     >
       <Form.Item
         name="username"
-        rules={[{ required: true, message: 'Please input your username!' }]}
+        rules={[
+          { required: true, message: 'Please input your username!' },
+          {
+            min: 3,
+            message: 'Username must be at least 3 characters!',
+          },
+          {
+            max: 50,
+            message: 'Username must be less than 50 characters!',
+          },
+          {
+            pattern: /^[a-zA-Z0-9_]+$/,
+            message: 'Username can only contain letters, numbers, and underscores!',
+          },
+        ]}
       >
         <Input
           prefix={<UserOutlined />}
@@ -88,8 +103,17 @@ export function RegisterForm() {
 
       <Form.Item
         name="confirmPassword"
+        dependencies={['password']}
         rules={[
           { required: true, message: 'Please confirm your password!' },
+          ({ getFieldValue }) => ({
+            validator(_, value) {
+              if (!value || getFieldValue('password') === value) {
+                return Promise.resolve()
+              }
+              return Promise.reject(new Error("Passwords don't match!"))
+            },
+          }),
         ]}
       >
         <Input.Password
@@ -112,4 +136,3 @@ export function RegisterForm() {
     </Form>
   )
 }
-

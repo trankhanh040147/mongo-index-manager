@@ -25,9 +25,24 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           const response = await authApi.getProfile()
           if (response.data.data) {
             useAuthStore.getState().updateProfile(response.data.data)
+            // Ensure isAuthenticated is set if we have tokens
+            if (!useAuthStore.getState().isAuthenticated) {
+              useAuthStore.setState({ isAuthenticated: true })
+            }
           }
         } catch {
-          // Profile fetch failed, user will be redirected to login
+          // Profile fetch failed, clear auth state
+          useAuthStore.getState().logout()
+        }
+      } else if (!accessToken) {
+        // No token, ensure not authenticated
+        if (useAuthStore.getState().isAuthenticated) {
+          useAuthStore.getState().logout()
+        }
+      } else if (accessToken && user) {
+        // Have both token and user, ensure authenticated
+        if (!useAuthStore.getState().isAuthenticated) {
+          useAuthStore.setState({ isAuthenticated: true })
         }
       }
       setLoading(false)
@@ -51,7 +66,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     )
   }
 
-  if (!isAuthenticated) {
+  // Check both isAuthenticated flag and accessToken presence
+  if (!isAuthenticated || !accessToken) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 

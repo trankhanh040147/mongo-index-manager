@@ -4,18 +4,44 @@
 
 import { Form, Input, Button, Space } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { loginSchema, type LoginFormData } from '../../utils/validationSchemas'
 
 export function LoginForm() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { login } = useAuth()
-  const [form] = Form.useForm()
+  const [form] = Form.useForm<LoginFormData>()
 
-  const handleSubmit = async (values: { identity: string; password: string }) => {
-    const result = await login(values)
+  const handleSubmit = async (values: LoginFormData) => {
+    // Validate with Zod
+    const validationResult = loginSchema.safeParse(values)
+    if (!validationResult.success) {
+      const errors = validationResult.error.flatten().fieldErrors
+      Object.keys(errors).forEach((key) => {
+        form.setFields([
+          {
+            name: key as keyof LoginFormData,
+            errors: errors[key as keyof typeof errors],
+          },
+        ])
+      })
+      return
+    }
+
+    const result = await login(validationResult.data)
     if (result.success) {
-      navigate('/dashboard')
+      // Redirect to the page user was trying to access, or dashboard
+      const from = (location.state as { from?: Location })?.from
+      navigate(
+        from
+          ? ((from as { pathname?: string }).pathname || '/dashboard')
+          : '/dashboard',
+        {
+          replace: true,
+        }
+      )
     }
   }
 
@@ -64,4 +90,3 @@ export function LoginForm() {
     </Form>
   )
 }
-
