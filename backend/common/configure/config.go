@@ -20,7 +20,7 @@ type Configuration struct {
 	TokenType                      string        `env:"TOKEN_TYPE" envDefault:"Bearer"`
 	MongoDBManagerUri              string        `env:"MONGODB_MANAGER_URI" envDefault:"mongodb://localhost:27017"`
 	MongoDBManagerName             string        `env:"MONGODB_MANAGER_NAME" envDefault:"db_manager"`
-	RedisAddress                   string        `env:"REDIS_ADDRESS" envDefault:"127.0.0.1:6379"`
+	RedisAddress                   string        `env:"REDIS_ADDRESS" envDefault:"redis://127.0.0.1:6379"`
 	PaginationMaxItem              int64         `env:"PAGINATION_MAX_ITEM" envDefault:"50"`
 	RedisPoolSize                  int           `env:"REDIS_POOL_SIZE" envDefault:"10"`
 	JobConcurrency                 int           `env:"JOB_CONCURRENCY" envDefault:"10"`

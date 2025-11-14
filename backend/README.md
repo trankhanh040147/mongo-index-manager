@@ -20,7 +20,7 @@
 | ELASTIC_APM_ENABLE                 | false                     |           |
 | MONGO_AUTO_INDEXING                | false                     |           |
 | JOB_CONCURRENCY                    | 10                        |           |
-| REDIS_ADDRESS                      | 127.0.0.1:6379            |           |
+| REDIS_ADDRESS                      | redis://127.0.0.1:6379    |           |
 | REDIS_POOL_SIZE                    | 10                        |           |
 | REDIS_DIAL_TIMEOUT                 | 5s                        |           |
 | REDIS_READ_TIMEOUT                 | 3s                        |           |
