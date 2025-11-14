@@ -5,12 +5,13 @@
 import { useAuthStore } from '../store/authStore'
 import { authApi } from '../api/auth'
 import { handleApiError } from '../utils/errorHandler'
-import { message } from 'antd'
+import { useMessage } from './useMessage'
 import type { LoginRequest, RegisterRequest } from '../types/auth'
 
 export function useAuth() {
   const { login: setLogin, logout, updateProfile, isAuthenticated, user } =
     useAuthStore()
+  const message = useMessage()
 
   const login = async (data: LoginRequest) => {
     try {
