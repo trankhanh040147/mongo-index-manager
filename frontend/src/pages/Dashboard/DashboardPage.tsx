@@ -9,10 +9,10 @@ const { Title } = Typography
 
 export function DashboardPage() {
   return (
-    <div>
-      <Title level={2}>Dashboard</Title>
-      <Row gutter={16} style={{ marginTop: 24 }}>
-        <Col span={12}>
+    <div style={{ width: '100%' }}>
+      <Title level={2} style={{ marginBottom: 24 }}>Dashboard</Title>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={24} md={12} lg={12} xl={12}>
           <Card>
             <Statistic
               title="Databases"
@@ -21,7 +21,7 @@ export function DashboardPage() {
             />
           </Card>
         </Col>
-        <Col span={12}>
+        <Col xs={24} sm={24} md={12} lg={12} xl={12}>
           <Card>
             <Statistic
               title="Indexes"

@@ -15,13 +15,20 @@ export function Layout() {
       <Header />
       <AntLayout>
         <Sidebar />
-        <AntLayout style={{ marginLeft: 200, marginTop: 64 }}>
+        <AntLayout 
+          style={{ 
+            marginLeft: 200, 
+            marginTop: 64,
+            minHeight: 'calc(100vh - 64px)',
+          }}
+        >
           <Content
             style={{
               margin: '24px 16px',
               padding: 24,
               background: '#fff',
-              minHeight: 280,
+              minHeight: 'calc(100vh - 112px)',
+              overflow: 'initial',
             }}
           >
             <Outlet />
