@@ -10,7 +10,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ConfigProvider theme={theme}>
       <AntApp>
-        <App />
+    <App />
       </AntApp>
     </ConfigProvider>
   </StrictMode>,
