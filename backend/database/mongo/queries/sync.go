@@ -19,8 +19,11 @@ import (
 
 type SyncQuery interface {
 	GetByDatabaseIdAndIsFinished(databaseId primitive.ObjectID, isFinished bool, opts ...OptionsQuery) (sync *models.Sync, err error)
+	GetById(id primitive.ObjectID, opts ...OptionsQuery) (sync *models.Sync, err error)
+	GetByDatabaseId(databaseId primitive.ObjectID, opts ...OptionsQuery) (syncs []models.Sync, err error)
 	CreateOne(sync models.Sync) (newIndex *models.Sync, err error)
 	UpdateIsFinishedById(id primitive.ObjectID, isFinished bool) error
+	UpdateStatusById(id primitive.ObjectID, status string, progress int, errorMsg string) error
 }
 
 type syncQuery struct {
@@ -72,17 +75,103 @@ func (q *syncQuery) GetByDatabaseIdAndIsFinished(databaseId primitive.ObjectID, 
 	return &data, nil
 }
 
+func (q *syncQuery) GetById(id primitive.ObjectID, opts ...OptionsQuery) (*models.Sync, error) {
+	opt := NewOptions()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	var data models.Sync
+	optFind := &options.FindOneOptions{Projection: opt.QueryOnlyField()}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	if err := q.collection.FindOne(ctx, bson.M{"_id": id}, optFind).Decode(&data); err != nil {
+		if errors.Is(err, mongoDriver.ErrNoDocuments) {
+			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Sync not found"})
+		}
+		logger.Error().Err(err).Str("function", "GetById").Str("functionInline", "q.collection.FindOne").Msg("syncQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	return &data, nil
+}
+
+func (q *syncQuery) GetByDatabaseId(databaseId primitive.ObjectID, opts ...OptionsQuery) ([]models.Sync, error) {
+	opt := NewOptions()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	var data []models.Sync
+	optFind := &options.FindOptions{
+		Projection: opt.QueryOnlyField(),
+		Sort:       opt.QuerySort(),
+	}
+	if limit := opt.QueryPaginationLimit(); limit != nil {
+		optFind.Limit = limit
+	}
+	if skip := opt.QueryPaginationSkip(); skip != nil {
+		optFind.Skip = skip
+	}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	cursor, err := q.collection.Find(ctx, bson.M{"database_id": databaseId}, optFind)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "GetByDatabaseId").Str("functionInline", "q.collection.Find").Msg("syncQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	defer cursor.Close(ctx)
+	if err = cursor.All(ctx, &data); err != nil {
+		logger.Error().Err(err).Str("function", "GetByDatabaseId").Str("functionInline", "cursor.All").Msg("syncQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	return data, nil
+}
+
 func (q *syncQuery) UpdateIsFinishedById(id primitive.ObjectID, isFinished bool) error {
 	ctx, cancel := timeoutFunc(q.context)
 	defer cancel()
+	updateFields := bson.M{
+		"updated_at":  time.Now(),
+		"is_finished": isFinished,
+	}
+	if isFinished {
+		now := time.Now()
+		updateFields["status"] = "completed"
+		updateFields["completed_at"] = now
+		updateFields["progress"] = 100
+	}
 	result, err := q.collection.UpdateByID(ctx, id, bson.M{
-		"$set": bson.M{
-			"updated_at":  time.Now(),
-			"is_finished": isFinished,
-		},
+		"$set": updateFields,
 	})
 	if err != nil {
 		logger.Error().Err(err).Str("function", "UpdateIsFinishedById").Str("functionInline", "q.collection.UpdateByID").Msg("syncQuery")
+		return response.NewError(fiber.StatusInternalServerError)
+	}
+	if result.MatchedCount == 0 {
+		return response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Sync not found"})
+	}
+	return nil
+}
+
+func (q *syncQuery) UpdateStatusById(id primitive.ObjectID, status string, progress int, errorMsg string) error {
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	updateFields := bson.M{
+		"updated_at": time.Now(),
+		"status":     status,
+		"progress":   progress,
+	}
+	if errorMsg != "" {
+		updateFields["error"] = errorMsg
+	}
+	if status == "completed" || status == "failed" {
+		now := time.Now()
+		updateFields["completed_at"] = now
+		updateFields["is_finished"] = true
+	}
+	result, err := q.collection.UpdateByID(ctx, id, bson.M{
+		"$set": updateFields,
+	})
+	if err != nil {
+		logger.Error().Err(err).Str("function", "UpdateStatusById").Str("functionInline", "q.collection.UpdateByID").Msg("syncQuery")
 		return response.NewError(fiber.StatusInternalServerError)
 	}
 	if result.MatchedCount == 0 {

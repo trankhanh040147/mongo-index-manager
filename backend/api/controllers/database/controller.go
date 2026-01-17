@@ -316,7 +316,15 @@ func (ctrl *controller) Delete(ctx *fiber.Ctx) error {
 		}
 		return err
 	}
-	// todo: check whether there is sync running
+	syncQuery := queries.NewSync(ctx.Context())
+	queryOption.SetOnlyFields("_id")
+	if _, err = syncQuery.GetByDatabaseIdAndIsFinished(id, false, queryOption); err != nil {
+		if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
+			return err
+		}
+	} else {
+		return response.New(ctx, response.Options{Code: fiber.StatusConflict, Data: respErr.ErrResourceConflict})
+	}
 	if err = databaseQuery.DeleteById(id); err != nil {
 		return err
 	}

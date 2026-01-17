@@ -209,3 +209,57 @@ func (v *IndexSyncByCollectionsValidate) Validate() error {
 	}
 	return nil
 }
+
+type IndexSyncStatusResponse struct {
+	Id          primitive.ObjectID `json:"id"`
+	DatabaseId  primitive.ObjectID `json:"database_id"`
+	Status      string             `json:"status"`
+	Progress    int                `json:"progress"`
+	Error       string             `json:"error"`
+	Collections []string           `json:"collections"`
+	IsFinished  bool               `json:"is_finished"`
+	StartedAt   time.Time          `json:"started_at"`
+	CompletedAt *time.Time         `json:"completed_at,omitempty"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at"`
+}
+
+type IndexSyncStatusListResponseItem struct {
+	Id          primitive.ObjectID `json:"id"`
+	Status      string             `json:"status"`
+	Progress    int                `json:"progress"`
+	Error       string             `json:"error"`
+	IsFinished  bool               `json:"is_finished"`
+	StartedAt   time.Time          `json:"started_at"`
+	CompletedAt *time.Time         `json:"completed_at,omitempty"`
+	CreatedAt   time.Time          `json:"created_at"`
+}
+
+type IndexSyncFromDatabaseValidate struct {
+	DatabaseId primitive.ObjectID `json:"database_id" validate:"required"`
+}
+
+func (v *IndexSyncFromDatabaseValidate) Validate() error {
+	validateEngine := validator.GetValidateEngine()
+	if err := validateEngine.Struct(v); err != nil {
+		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: validator.ParseValidateError(err)})
+	}
+	return nil
+}
+
+type IndexSyncFromDatabaseResponse struct {
+	ImportedCount int `json:"imported_count"`
+	SkippedCount  int `json:"skipped_count"`
+}
+
+type IndexSyncByDatabaseValidate struct {
+	DatabaseId primitive.ObjectID `json:"database_id" validate:"required"`
+}
+
+func (v *IndexSyncByDatabaseValidate) Validate() error {
+	validateEngine := validator.GetValidateEngine()
+	if err := validateEngine.Struct(v); err != nil {
+		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: validator.ParseValidateError(err)})
+	}
+	return nil
+}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 	"slices"
+	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v2"
@@ -33,6 +34,10 @@ type Controller interface {
 	CompareByCollections(ctx *fiber.Ctx) error
 	CompareByDatabase(ctx *fiber.Ctx) error
 	SyncByCollections(ctx *fiber.Ctx) error
+	GetSyncStatus(ctx *fiber.Ctx) error
+	GetSyncStatusByDatabase(ctx *fiber.Ctx) error
+	SyncFromDatabase(ctx *fiber.Ctx) error
+	SyncByDatabase(ctx *fiber.Ctx) error
 }
 
 type controller struct {
@@ -570,6 +575,9 @@ func (ctrl *controller) SyncByCollections(ctx *fiber.Ctx) error {
 		Collections: requestBody.Collections,
 		DatabaseID:  requestBody.DatabaseId,
 		IsFinished:  false,
+		Status:      "pending",
+		Progress:    0,
+		StartedAt:   time.Now(),
 	})
 	if err != nil {
 		return err
@@ -584,6 +592,212 @@ func (ctrl *controller) SyncByCollections(ctx *fiber.Ctx) error {
 	})
 	if _, err = jobqueue.GetGlobal().EnqueueTask(asynq.NewTask(jobqueue.TaskTypeSyncIndexByCollection, payloadData)); err != nil {
 		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "jobQueue.EnqueueTask").Msg("index-controller")
+		return response.NewError(fiber.StatusInternalServerError)
+	}
+	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
+}
+
+func (ctrl *controller) GetSyncStatus(ctx *fiber.Ctx) error {
+	id, err := primitive.ObjectIDFromHex(ctx.Params("sync_id"))
+	if err != nil {
+		return response.New(ctx, response.Options{Code: fiber.StatusNotFound, Data: respErr.ErrResourceNotFound})
+	}
+	queryOption := queries.NewOptions()
+	sync, err := queries.NewSync(ctx.Context()).GetById(id, queryOption)
+	if err != nil {
+		return err
+	}
+	return response.New(ctx, response.Options{Data: serializers.IndexSyncStatusResponse{
+		Id:          sync.Id,
+		DatabaseId:  sync.DatabaseID,
+		Status:      sync.Status,
+		Progress:    sync.Progress,
+		Error:       sync.Error,
+		Collections: sync.Collections,
+		IsFinished:  sync.IsFinished,
+		StartedAt:   sync.StartedAt,
+		CompletedAt: sync.CompletedAt,
+		CreatedAt:   sync.CreatedAt,
+		UpdatedAt:   sync.UpdatedAt,
+	}})
+}
+
+func (ctrl *controller) GetSyncStatusByDatabase(ctx *fiber.Ctx) error {
+	databaseId, err := primitive.ObjectIDFromHex(ctx.Params("database_id"))
+	if err != nil {
+		return response.New(ctx, response.Options{Code: fiber.StatusNotFound, Data: respErr.ErrResourceNotFound})
+	}
+	queryOption := queries.NewOptions()
+	queryOption.AddSortKey(map[string]int{
+		"created_at": queries.SortTypeDesc,
+	})
+	syncs, err := queries.NewSync(ctx.Context()).GetByDatabaseId(databaseId, queryOption)
+	if err != nil {
+		return err
+	}
+	result := make([]serializers.IndexSyncStatusListResponseItem, len(syncs))
+	for i, sync := range syncs {
+		result[i] = serializers.IndexSyncStatusListResponseItem{
+			Id:          sync.Id,
+			Status:      sync.Status,
+			Progress:    sync.Progress,
+			Error:       sync.Error,
+			IsFinished:  sync.IsFinished,
+			StartedAt:   sync.StartedAt,
+			CompletedAt: sync.CompletedAt,
+			CreatedAt:   sync.CreatedAt,
+		}
+	}
+	return response.NewArrayWithPagination(ctx, result, &request.Pagination{})
+}
+
+func (ctrl *controller) SyncFromDatabase(ctx *fiber.Ctx) error {
+	var requestBody serializers.IndexSyncFromDatabaseValidate
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return response.New(ctx, response.Options{Code: fiber.StatusBadRequest, Data: respErr.ErrFieldWrongType})
+	}
+	if err := requestBody.Validate(); err != nil {
+		return err
+	}
+	queryOption := queries.NewOptions()
+	queryOption.SetOnlyFields("uri", "db_name")
+	database, err := queries.NewDatabase(ctx.Context()).GetById(requestBody.DatabaseId, queryOption)
+	if err != nil {
+		return err
+	}
+	dbClient, err := mongodb.New(database.Uri)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "SyncFromDatabase").Str("functionInline", "mongodb.New").Msg("index-controller")
+		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot connect to database"})
+	}
+	clientIndexes, err := dbClient.GetIndexesByDbName(database.DBName)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "SyncFromDatabase").Str("functionInline", "dbClient.GetIndexesByDbName").Msg("index-controller")
+		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot get indexes from database"})
+	}
+	indexQuery := queries.NewIndex(ctx.Context())
+	queryOption.SetOnlyFields("_id", "key_signature", "collection")
+	importedCount := 0
+	skippedCount := 0
+	for _, clientIndex := range clientIndexes {
+		keys := make([]models.IndexKey, len(clientIndex.Keys))
+		for i, key := range clientIndex.Keys {
+			keys[i] = models.IndexKey{
+				Field: key.Field,
+				Value: key.Value,
+			}
+		}
+		indexModel := models.Index{
+			Options: models.IndexOption{
+				ExpireAfterSeconds: clientIndex.Options.ExpireAfterSeconds,
+				IsUnique:           clientIndex.Options.IsUnique,
+			},
+			Collection: clientIndex.Collection,
+			Name:       clientIndex.Name,
+			Keys:       keys,
+			DatabaseId: requestBody.DatabaseId,
+		}
+		indexModel.KeySignature = indexModel.GetKeySignature()
+		if indexModel.Name == "" {
+			indexModel.Name = indexModel.KeySignature
+		}
+		queryOption.SetOnlyFields("_id")
+		if _, err := indexQuery.GetByDatabaseIdCollectionWithNameOrSignature(requestBody.DatabaseId, clientIndex.Collection, indexModel.KeySignature, indexModel.Name, queryOption); err != nil {
+			if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
+				return err
+			}
+			if _, err := indexQuery.CreateOne(indexModel); err != nil {
+				logger.Error().Err(err).Str("function", "SyncFromDatabase").Str("functionInline", "indexQuery.CreateOne").Str("collection", clientIndex.Collection).Str("name", indexModel.Name).Msg("index-controller")
+				continue
+			}
+			importedCount++
+		} else {
+			skippedCount++
+		}
+	}
+	return response.New(ctx, response.Options{Data: serializers.IndexSyncFromDatabaseResponse{
+		ImportedCount: importedCount,
+		SkippedCount:  skippedCount,
+	}})
+}
+
+func (ctrl *controller) SyncByDatabase(ctx *fiber.Ctx) error {
+	var requestBody serializers.IndexSyncByDatabaseValidate
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return response.New(ctx, response.Options{Code: fiber.StatusBadRequest, Data: respErr.ErrFieldWrongType})
+	}
+	if err := requestBody.Validate(); err != nil {
+		return err
+	}
+	queryOption := queries.NewOptions()
+	queryOption.SetOnlyFields("uri", "db_name")
+	database, err := queries.NewDatabase(ctx.Context()).GetById(requestBody.DatabaseId, queryOption)
+	if err != nil {
+		return err
+	}
+	syncQuery := queries.NewSync(ctx.Context())
+	queryOption.SetOnlyFields("_id")
+	if _, err = syncQuery.GetByDatabaseIdAndIsFinished(requestBody.DatabaseId, false, queryOption); err != nil {
+		if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
+			return err
+		}
+	} else {
+		return response.New(ctx, response.Options{Code: fiber.StatusConflict, Data: respErr.ErrResourceConflict})
+	}
+	indexQuery := queries.NewIndex(ctx.Context())
+	queryOption.SetOnlyFields("options", "keys", "key_signature", "collection", "name")
+	indexes, err := indexQuery.GetByDatabaseId(requestBody.DatabaseId, queryOption)
+	if err != nil {
+		return err
+	}
+	collections := make([]string, 0)
+	mapCollection := make(map[string]struct{})
+	mapIndexManager := make(map[string]map[string]models.Index)
+	for _, index := range indexes {
+		if _, exists := mapCollection[index.Collection]; !exists {
+			collections = append(collections, index.Collection)
+			mapCollection[index.Collection] = struct{}{}
+		}
+		if _, exists := mapIndexManager[index.Collection]; !exists {
+			mapIndexManager[index.Collection] = make(map[string]models.Index)
+		}
+		mapIndexManager[index.Collection][index.KeySignature] = index
+	}
+	if len(collections) == 0 {
+		return response.New(ctx, response.Options{Code: fiber.StatusBadRequest, Data: "No collections with indexes found"})
+	}
+	dbClient, err := mongodb.New(database.Uri)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "SyncByDatabase").Str("functionInline", "mongodb.New").Msg("index-controller")
+		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Can't connect to database"})
+	}
+	clientIndexes, err := dbClient.GetIndexesByDbNameAndCollections(database.DBName, collections)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "SyncByDatabase").Str("functionInline", "dbClient.GetIndexesByDbNameAndCollections").Msg("index-controller")
+		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Can't get indexes from database"})
+	}
+	sync, err := syncQuery.CreateOne(models.Sync{
+		Error:       "",
+		Collections: collections,
+		DatabaseID:  requestBody.DatabaseId,
+		IsFinished:  false,
+		Status:      "pending",
+		Progress:    0,
+		StartedAt:   time.Now(),
+	})
+	if err != nil {
+		return err
+	}
+	payloadData, _ := sonic.Marshal(job.PayloadSyncIndexByCollections{
+		Collections:   collections,
+		ClientIndexes: clientIndexes,
+		ServerIndexes: indexes,
+		Uri:           database.Uri,
+		DBName:        database.DBName,
+		SyncId:        sync.Id,
+	})
+	if _, err = jobqueue.GetGlobal().EnqueueTask(asynq.NewTask(jobqueue.TaskTypeSyncIndexByCollection, payloadData)); err != nil {
+		logger.Error().Err(err).Str("function", "SyncByDatabase").Str("functionInline", "jobQueue.EnqueueTask").Msg("index-controller")
 		return response.NewError(fiber.StatusInternalServerError)
 	}
 	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})

@@ -33,4 +33,8 @@ func (r *index) V1() {
 	r.router.Post("/compare-by-collections", r.controller.CompareByCollections)
 	r.router.Post("/compare-by-database", r.controller.CompareByDatabase)
 	r.router.Post("/sync-by-collections", r.controller.SyncByCollections)
+	r.router.Post("/sync-by-database", r.controller.SyncByDatabase)
+	r.router.Post("/sync-from-database", r.controller.SyncFromDatabase)
+	r.router.Get("/sync-status/:sync_id", r.controller.GetSyncStatus)
+	r.router.Get("/sync-status/by-database/:database_id", r.controller.GetSyncStatusByDatabase)
 }

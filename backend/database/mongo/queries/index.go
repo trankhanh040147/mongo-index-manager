@@ -2,6 +2,9 @@ package queries
 
 import (
 	"context"
+	"doctor-manager-api/common/response"
+	"doctor-manager-api/database/mongo"
+	"doctor-manager-api/database/mongo/models"
 	"errors"
 	"regexp"
 	"time"
@@ -12,10 +15,7 @@ import (
 	mongoDriver "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"doctor-manager-api/common/response"
 	respErr "doctor-manager-api/common/response/error"
-	"doctor-manager-api/database/mongo"
-	"doctor-manager-api/database/mongo/models"
 )
 
 type IndexQuery interface {
@@ -101,7 +101,8 @@ func (q *indexQuery) GetByDatabaseIdCollectionWithNameOrSignature(databaseId pri
 		"$or": []bson.M{
 			{"key_signature": keySignature},
 			{"name": name},
-		}}, optFind).Decode(&data); err != nil {
+		},
+	}, optFind).Decode(&data); err != nil {
 		if errors.Is(err, mongoDriver.ErrNoDocuments) {
 			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Index not found"})
 		}

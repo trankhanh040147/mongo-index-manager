@@ -123,9 +123,7 @@ tmp
 # visual code
 .vscode
 .env
-Makefile
 
 certs
 .pre-commit-config.yaml
 /venv
-.cursor

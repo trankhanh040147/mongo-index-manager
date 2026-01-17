@@ -1,5 +1,6 @@
 ### Go template
 # Binaries for programs and plugins
+app
 *.exe
 *.exe~
 *.dll
@@ -123,7 +124,6 @@ tmp
 # visual code
 .vscode
 .env
-Makefile
 
 certs
 .pre-commit-config.yaml
