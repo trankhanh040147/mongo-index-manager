@@ -7,6 +7,7 @@ import (
 	"github.com/hibiken/asynq"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
+	"doctor-manager-api/common/constants"
 	"doctor-manager-api/database/mongo/models"
 	"doctor-manager-api/database/mongo/queries"
 	"doctor-manager-api/utilities/mongodb"
@@ -26,13 +27,13 @@ func handleSyncIndexByCollection(ctx context.Context, t *asynq.Task) error {
 	syncQuery := queries.NewSync(ctx)
 	if err := sonic.Unmarshal(t.Payload(), &payload); err != nil {
 		logger.Error().Err(err).Str("function", "handleSyncIndexByCollection").Str("functionInline", "sonic.Unmarshal").Interface("payload", payload).Msg("job-handler")
-		if updateErr := syncQuery.UpdateStatusById(payload.SyncId, "failed", 0, err.Error()); updateErr != nil {
+		if updateErr := syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusFailed, 0, err.Error()); updateErr != nil {
 			logger.Error().Err(updateErr).Str("function", "handleSyncIndexByCollection").Str("functionInline", "syncQuery.UpdateStatusById").Msg("job-handler")
 		}
 		return asynq.SkipRetry
 	}
 	// Set status to running at start
-	if err := syncQuery.UpdateStatusById(payload.SyncId, "running", 0, ""); err != nil {
+	if err := syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusRunning, 0, ""); err != nil {
 		logger.Error().Err(err).Str("function", "handleSyncIndexByCollection").Str("functionInline", "syncQuery.UpdateStatusById").Msg("job-handler")
 	}
 	mapIndexClient := make(map[string]map[string]mongodb.Index)
@@ -96,33 +97,39 @@ func handleSyncIndexByCollection(ctx context.Context, t *asynq.Task) error {
 	dbClient, err := mongodb.New(payload.Uri)
 	if err != nil {
 		logger.Error().Err(err).Str("function", "handleSyncIndexByCollection").Str("functionInline", "mongodb.New").Msg("job-controller")
-		if updateErr := syncQuery.UpdateStatusById(payload.SyncId, "failed", 0, err.Error()); updateErr != nil {
+		if updateErr := syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusFailed, 0, err.Error()); updateErr != nil {
 			logger.Error().Err(updateErr).Str("function", "handleSyncIndexByCollection").Str("functionInline", "syncQuery.UpdateStatusById").Msg("job-handler")
 		}
 		return err
 	}
 	totalCollections := len(payload.Collections)
-	progressStep := 100 / (totalCollections * 2) // Remove and create operations
+	totalOperations := totalCollections * 2 // Remove and create operations
+	calculateProgress := func(processed, total int) int {
+		if total == 0 {
+			return 100
+		}
+		return int(float64(processed) / float64(total) * 100)
+	}
 	currentProgress := 0
 	if err = dbClient.RemoveIndexes(payload.DBName, redundantIndexes); err != nil {
 		logger.Error().Err(err).Str("function", "handleSyncIndexByCollection").Str("functionInline", "dbClient.RemoveIndexes").Msg("job-controller")
-		if updateErr := syncQuery.UpdateStatusById(payload.SyncId, "failed", currentProgress, err.Error()); updateErr != nil {
+		if updateErr := syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusFailed, currentProgress, err.Error()); updateErr != nil {
 			logger.Error().Err(updateErr).Str("function", "handleSyncIndexByCollection").Str("functionInline", "syncQuery.UpdateStatusById").Msg("job-handler")
 		}
 		return asynq.SkipRetry
 	}
-	currentProgress += progressStep * totalCollections
-	if err = syncQuery.UpdateStatusById(payload.SyncId, "running", currentProgress, ""); err != nil {
+	currentProgress = calculateProgress(totalCollections, totalOperations)
+	if err = syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusRunning, currentProgress, ""); err != nil {
 		logger.Error().Err(err).Str("function", "handleSyncIndexByCollection").Str("functionInline", "syncQuery.UpdateStatusById").Msg("job-handler")
 	}
 	if err = dbClient.CreateIndexes(payload.DBName, missingIndexes); err != nil {
 		logger.Error().Err(err).Str("function", "handleSyncIndexByCollection").Str("functionInline", "dbClient.CreateIndexes").Msg("job-controller")
-		if updateErr := syncQuery.UpdateStatusById(payload.SyncId, "failed", currentProgress, err.Error()); updateErr != nil {
+		if updateErr := syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusFailed, currentProgress, err.Error()); updateErr != nil {
 			logger.Error().Err(updateErr).Str("function", "handleSyncIndexByCollection").Str("functionInline", "syncQuery.UpdateStatusById").Msg("job-handler")
 		}
 		return asynq.SkipRetry
 	}
-	if err = syncQuery.UpdateStatusById(payload.SyncId, "completed", 100, ""); err != nil {
+	if err = syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusCompleted, 100, ""); err != nil {
 		logger.Error().Err(err).Str("function", "handleSyncIndexByCollection").Str("functionInline", "syncQuery.UpdateStatusById").Msg("job-handler")
 		return asynq.SkipRetry
 	}

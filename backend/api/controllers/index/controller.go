@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"doctor-manager-api/api/serializers"
+	"doctor-manager-api/common/constants"
 	"doctor-manager-api/common/logging"
 	"doctor-manager-api/common/request"
 	"doctor-manager-api/common/response"
@@ -575,7 +576,7 @@ func (ctrl *controller) SyncByCollections(ctx *fiber.Ctx) error {
 		Collections: requestBody.Collections,
 		DatabaseID:  requestBody.DatabaseId,
 		IsFinished:  false,
-		Status:      "pending",
+		Status:      constants.SyncStatusPending,
 		Progress:    0,
 		StartedAt:   time.Now(),
 	})
@@ -592,6 +593,7 @@ func (ctrl *controller) SyncByCollections(ctx *fiber.Ctx) error {
 	})
 	if _, err = jobqueue.GetGlobal().EnqueueTask(asynq.NewTask(jobqueue.TaskTypeSyncIndexByCollection, payloadData)); err != nil {
 		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "jobQueue.EnqueueTask").Msg("index-controller")
+		_ = syncQuery.UpdateStatusById(sync.Id, constants.SyncStatusFailed, 0, "Failed to enqueue job")
 		return response.NewError(fiber.StatusInternalServerError)
 	}
 	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
@@ -676,7 +678,20 @@ func (ctrl *controller) SyncFromDatabase(ctx *fiber.Ctx) error {
 		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot get indexes from database"})
 	}
 	indexQuery := queries.NewIndex(ctx.Context())
-	queryOption.SetOnlyFields("_id", "key_signature", "collection")
+	queryOption.SetOnlyFields("_id", "key_signature", "collection", "name")
+	existingIndexes, err := indexQuery.GetByDatabaseId(requestBody.DatabaseId, queryOption)
+	if err != nil {
+		return err
+	}
+	existingIndexMap := make(map[string]struct{})
+	for _, idx := range existingIndexes {
+		key := idx.Collection + ":" + idx.KeySignature
+		existingIndexMap[key] = struct{}{}
+		if idx.Name != "" {
+			keyByName := idx.Collection + ":" + idx.Name
+			existingIndexMap[keyByName] = struct{}{}
+		}
+	}
 	importedCount := 0
 	skippedCount := 0
 	for _, clientIndex := range clientIndexes {
@@ -701,18 +716,24 @@ func (ctrl *controller) SyncFromDatabase(ctx *fiber.Ctx) error {
 		if indexModel.Name == "" {
 			indexModel.Name = indexModel.KeySignature
 		}
-		queryOption.SetOnlyFields("_id")
-		if _, err := indexQuery.GetByDatabaseIdCollectionWithNameOrSignature(requestBody.DatabaseId, clientIndex.Collection, indexModel.KeySignature, indexModel.Name, queryOption); err != nil {
-			if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
-				return err
-			}
-			if _, err := indexQuery.CreateOne(indexModel); err != nil {
-				logger.Error().Err(err).Str("function", "SyncFromDatabase").Str("functionInline", "indexQuery.CreateOne").Str("collection", clientIndex.Collection).Str("name", indexModel.Name).Msg("index-controller")
-				continue
-			}
-			importedCount++
-		} else {
+		keyBySignature := indexModel.Collection + ":" + indexModel.KeySignature
+		keyByName := indexModel.Collection + ":" + indexModel.Name
+		if _, exists := existingIndexMap[keyBySignature]; exists {
 			skippedCount++
+			continue
+		}
+		if _, exists := existingIndexMap[keyByName]; exists {
+			skippedCount++
+			continue
+		}
+		if _, err := indexQuery.CreateOne(indexModel); err != nil {
+			logger.Error().Err(err).Str("function", "SyncFromDatabase").Str("functionInline", "indexQuery.CreateOne").Str("collection", clientIndex.Collection).Str("name", indexModel.Name).Msg("index-controller")
+			continue
+		}
+		importedCount++
+		existingIndexMap[keyBySignature] = struct{}{}
+		if indexModel.Name != "" {
+			existingIndexMap[keyByName] = struct{}{}
 		}
 	}
 	return response.New(ctx, response.Options{Data: serializers.IndexSyncFromDatabaseResponse{
@@ -781,7 +802,7 @@ func (ctrl *controller) SyncByDatabase(ctx *fiber.Ctx) error {
 		Collections: collections,
 		DatabaseID:  requestBody.DatabaseId,
 		IsFinished:  false,
-		Status:      "pending",
+		Status:      constants.SyncStatusPending,
 		Progress:    0,
 		StartedAt:   time.Now(),
 	})
@@ -798,6 +819,7 @@ func (ctrl *controller) SyncByDatabase(ctx *fiber.Ctx) error {
 	})
 	if _, err = jobqueue.GetGlobal().EnqueueTask(asynq.NewTask(jobqueue.TaskTypeSyncIndexByCollection, payloadData)); err != nil {
 		logger.Error().Err(err).Str("function", "SyncByDatabase").Str("functionInline", "jobQueue.EnqueueTask").Msg("index-controller")
+		_ = syncQuery.UpdateStatusById(sync.Id, constants.SyncStatusFailed, 0, "Failed to enqueue job")
 		return response.NewError(fiber.StatusInternalServerError)
 	}
 	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})

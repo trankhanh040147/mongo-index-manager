@@ -1,0 +1,1680 @@
+openapi: 3.1.0
+info:
+  title: MongoDB Index Manager API
+  version: v1
+  description: |
+    This API provides endpoints for managing MongoDB databases and their indexes. 
+    The API uses JWT-based authentication with access tokens and refresh tokens.
+    
+    **Base Path:** `/api/doctor-manager-api/v1`
+    
+    **Content-Type:** `application/json`
+    
+    ## Authentication
+    
+    The API uses JWT (JSON Web Tokens) for authentication. There are two types of tokens:
+    
+    - **Access Token**: Used for authenticated requests (short-lived, default: 10 minutes)
+    - **Refresh Token**: Used to obtain new access tokens (long-lived, default: 24 hours)
+    
+    All authenticated requests must include the access token in the `Authorization` header:
+    
+    ```
+    Authorization: Bearer <access_token>
+    ```
+    
+    ## Response Format
+    
+    All responses follow a standard format:
+    
+    **Success Response:**
+    ```json
+    {
+      "status_code": 200,
+      "error_code": 0,
+      "data": { ... }
+    }
+    ```
+    
+    **Success Response with Pagination:**
+    ```json
+    {
+      "status_code": 200,
+      "error_code": 0,
+      "data": [ ... ],
+      "extra": {
+        "limit": 10,
+        "page": 1,
+        "total": 100
+      }
+    }
+    ```
+    
+    **Error Response:**
+    ```json
+    {
+      "status_code": 400,
+      "error_code": 0,
+      "error": "Error message or validation errors"
+    }
+    ```
+    
+    ## Error Codes
+    
+    - `200 OK`: Request successful
+    - `201 Created`: Resource created successfully
+    - `400 Bad Request`: Invalid request data or validation errors
+    - `401 Unauthorized`: Missing or invalid authentication token
+    - `404 Not Found`: Resource not found
+    - `409 Conflict`: Resource conflict (e.g., duplicate name)
+    - `412 Precondition Failed`: Precondition failed (e.g., cannot connect to database)
+    - `500 Internal Server Error`: Server error
+
+servers:
+  - url: /api/doctor-manager-api/v1
+    description: API Base URL
+
+tags:
+  - name: Authentication
+    description: User authentication and profile management
+  - name: Database
+    description: MongoDB database connection management
+  - name: Index
+    description: MongoDB index management and synchronization
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token for authenticated requests
+    refreshTokenAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT refresh token for obtaining new access tokens
+
+  schemas:
+    # Common Response Wrappers
+    SuccessResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 200
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: object
+      required:
+        - status_code
+        - error_code
+        - data
+
+    SuccessResponseWithPagination:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 200
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: array
+          items: {}
+        extra:
+          $ref: '#/components/schemas/PaginationMetadata'
+      required:
+        - status_code
+        - error_code
+        - data
+        - extra
+
+    ErrorResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 400
+        error_code:
+          type: integer
+          example: 0
+        error:
+          oneOf:
+            - type: string
+            - type: object
+      required:
+        - status_code
+        - error_code
+        - error
+
+    PaginationMetadata:
+      type: object
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+          example: 10
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        total:
+          type: integer
+          nullable: true
+          example: 100
+      required:
+        - limit
+        - page
+
+    ObjectID:
+      type: string
+      pattern: '^[0-9a-fA-F]{24}$'
+      description: MongoDB ObjectID (24-character hexadecimal string)
+      example: "507f1f77bcf86cd799439011"
+
+    DateTime:
+      type: string
+      format: date-time
+      description: ISO 8601 formatted datetime
+      example: "2024-01-15T10:30:00Z"
+
+    # Authentication Schemas
+    AuthRegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Username for the new account
+        email:
+          type: string
+          format: email
+          description: Email address for the new account
+        password:
+          type: string
+          minLength: 8
+          description: Password (minimum 8 characters)
+      required:
+        - username
+        - email
+        - password
+
+    AuthRegisterResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 201
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: object
+          properties:
+            success:
+              type: boolean
+              example: true
+      required:
+        - status_code
+        - error_code
+        - data
+
+    AuthLoginRequest:
+      type: object
+      properties:
+        identity:
+          type: string
+          description: Username or email address
+        password:
+          type: string
+          description: User password
+      required:
+        - identity
+        - password
+
+    AuthLoginResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 200
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: object
+          properties:
+            access_token:
+              type: string
+              description: JWT access token
+            refresh_token:
+              type: string
+              description: JWT refresh token
+      required:
+        - status_code
+        - error_code
+        - data
+
+    AuthRefreshTokenResponse:
+      $ref: '#/components/schemas/AuthLoginResponse'
+
+    AuthProfileResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 200
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: object
+          properties:
+            username:
+              type: string
+            email:
+              type: string
+            first_name:
+              type: string
+            last_name:
+              type: string
+            avatar:
+              type: string
+      required:
+        - status_code
+        - error_code
+        - data
+
+    AuthUpdateProfileRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+          nullable: true
+        last_name:
+          type: string
+          nullable: true
+        avatar:
+          type: string
+          nullable: true
+
+    AuthUpdateProfileResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 200
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: object
+          properties:
+            success:
+              type: boolean
+              example: true
+      required:
+        - status_code
+        - error_code
+        - data
+
+    # Database Schemas
+    DatabaseCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Database connection name
+        description:
+          type: string
+          nullable: true
+          description: Optional description
+        uri:
+          type: string
+          description: MongoDB connection URI (valid MongoDB URI format)
+        db_name:
+          type: string
+          description: Database name
+        is_test_connection:
+          type: boolean
+          default: false
+          description: If true, validates the connection before creating
+        is_sync_index:
+          type: boolean
+          default: false
+          description: If true, automatically syncs indexes from the database
+      required:
+        - name
+        - uri
+        - db_name
+
+    DatabaseCreateResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 201
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: object
+          properties:
+            id:
+              $ref: '#/components/schemas/ObjectID'
+      required:
+        - status_code
+        - error_code
+        - data
+
+    DatabaseGetResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 200
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: object
+          properties:
+            id:
+              $ref: '#/components/schemas/ObjectID'
+            created_at:
+              $ref: '#/components/schemas/DateTime'
+            updated_at:
+              $ref: '#/components/schemas/DateTime'
+            name:
+              type: string
+            description:
+              type: string
+            uri:
+              type: string
+            db_name:
+              type: string
+      required:
+        - status_code
+        - error_code
+        - data
+
+    DatabaseListRequest:
+      type: object
+      properties:
+        query:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Search query (if valid ObjectID, returns that specific database)
+        page:
+          type: integer
+          minimum: 0
+          nullable: true
+          default: 1
+        limit:
+          type: integer
+          minimum: 0
+          nullable: true
+          default: 50
+          maximum: 50
+
+    DatabaseListItem:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/ObjectID'
+        created_at:
+          $ref: '#/components/schemas/DateTime'
+        updated_at:
+          $ref: '#/components/schemas/DateTime'
+        name:
+          type: string
+        description:
+          type: string
+        uri:
+          type: string
+        db_name:
+          type: string
+
+    DatabaseListResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponseWithPagination'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/DatabaseListItem'
+
+    DatabaseUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        uri:
+          type: string
+        db_name:
+          type: string
+        is_test_connection:
+          type: boolean
+          default: false
+          description: If true and URI changed, validates the new connection
+      required:
+        - name
+        - uri
+        - db_name
+
+    DatabaseUpdateResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 200
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: object
+          properties:
+            success:
+              type: boolean
+              example: true
+      required:
+        - status_code
+        - error_code
+        - data
+
+    DatabaseDeleteResponse:
+      $ref: '#/components/schemas/DatabaseUpdateResponse'
+
+    DatabaseListCollectionsRequest:
+      type: object
+      properties:
+        database_id:
+          $ref: '#/components/schemas/ObjectID'
+        query:
+          type: string
+          nullable: true
+        page:
+          type: integer
+          minimum: 0
+          nullable: true
+          default: 1
+        limit:
+          type: integer
+          minimum: 0
+          nullable: true
+          default: 50
+          maximum: 50
+      required:
+        - database_id
+
+    DatabaseCollectionItem:
+      type: object
+      properties:
+        collection:
+          type: string
+        total_indexes:
+          type: integer
+
+    DatabaseListCollectionsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponseWithPagination'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/DatabaseCollectionItem'
+
+    # Index Schemas
+    IndexKey:
+      type: object
+      properties:
+        field:
+          type: string
+          description: Field name (cannot be '_id')
+        value:
+          type: integer
+          enum: [1, -1]
+          description: "1 for ascending, -1 for descending"
+      required:
+        - field
+        - value
+
+    IndexOption:
+      type: object
+      properties:
+        expire_after_seconds:
+          type: integer
+          minimum: 0
+          nullable: true
+          description: TTL in seconds (only for single-key indexes)
+        is_unique:
+          type: boolean
+          default: false
+          description: Whether the index is unique
+
+    IndexCreateRequest:
+      type: object
+      properties:
+        database_id:
+          $ref: '#/components/schemas/ObjectID'
+        collection:
+          type: string
+          description: Collection name
+        name:
+          type: string
+          maxLength: 100
+          nullable: true
+          description: Index name (cannot be '_id_', auto-generated if empty)
+        options:
+          $ref: '#/components/schemas/IndexOption'
+        keys:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/IndexKey'
+          description: Array of index keys (unique fields, minimum 1)
+      required:
+        - database_id
+        - collection
+        - options
+        - keys
+
+    IndexCreateResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 201
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: object
+          properties:
+            id:
+              $ref: '#/components/schemas/ObjectID'
+      required:
+        - status_code
+        - error_code
+        - data
+
+    IndexGetResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 200
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: object
+          properties:
+            id:
+              $ref: '#/components/schemas/ObjectID'
+            database_id:
+              $ref: '#/components/schemas/ObjectID'
+            created_at:
+              $ref: '#/components/schemas/DateTime'
+            updated_at:
+              $ref: '#/components/schemas/DateTime'
+            collection:
+              type: string
+            name:
+              type: string
+            key_signature:
+              type: string
+            options:
+              $ref: '#/components/schemas/IndexOption'
+            keys:
+              type: array
+              items:
+                $ref: '#/components/schemas/IndexKey'
+      required:
+        - status_code
+        - error_code
+        - data
+
+    IndexListByCollectionRequest:
+      type: object
+      properties:
+        database_id:
+          $ref: '#/components/schemas/ObjectID'
+        collection:
+          type: string
+        query:
+          type: string
+          nullable: true
+          description: Search query (if valid ObjectID, returns that specific index)
+        page:
+          type: integer
+          minimum: 0
+          nullable: true
+          default: 1
+        limit:
+          type: integer
+          minimum: 0
+          nullable: true
+          default: 50
+          maximum: 50
+      required:
+        - database_id
+        - collection
+
+    IndexListItem:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/ObjectID'
+        database_id:
+          $ref: '#/components/schemas/ObjectID'
+        created_at:
+          $ref: '#/components/schemas/DateTime'
+        updated_at:
+          $ref: '#/components/schemas/DateTime'
+        collection:
+          type: string
+        name:
+          type: string
+        key_signature:
+          type: string
+        options:
+          $ref: '#/components/schemas/IndexOption'
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndexKey'
+
+    IndexListByCollectionResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponseWithPagination'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/IndexListItem'
+
+    IndexUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          nullable: true
+          description: Index name (cannot be '_id_', auto-generated if empty)
+        options:
+          $ref: '#/components/schemas/IndexOption'
+        keys:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/IndexKey'
+          description: Array of index keys (unique fields, minimum 1)
+      required:
+        - options
+        - keys
+
+    IndexUpdateResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 200
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: object
+          properties:
+            success:
+              type: boolean
+              example: true
+      required:
+        - status_code
+        - error_code
+        - data
+
+    IndexDeleteResponse:
+      $ref: '#/components/schemas/IndexUpdateResponse'
+
+    IndexCompareByCollectionsRequest:
+      type: object
+      properties:
+        database_id:
+          $ref: '#/components/schemas/ObjectID'
+        collections:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          uniqueItems: true
+          description: List of collection names to compare
+      required:
+        - database_id
+        - collections
+
+    IndexCompareItem:
+      type: object
+      properties:
+        name:
+          type: string
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndexKey'
+        options:
+          $ref: '#/components/schemas/IndexOption'
+
+    IndexCompareCollectionResult:
+      type: object
+      properties:
+        collection:
+          type: string
+        missing_indexes:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndexCompareItem'
+          description: Indexes in manager but not in database
+        matched_indexes:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndexCompareItem'
+          description: Indexes that exist in both manager and database
+        redundant_indexes:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndexCompareItem'
+          description: Indexes in database but not in manager
+
+    IndexCompareByCollectionsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponseWithPagination'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/IndexCompareCollectionResult'
+
+    IndexCompareByDatabaseRequest:
+      type: object
+      properties:
+        database_id:
+          $ref: '#/components/schemas/ObjectID'
+      required:
+        - database_id
+
+    IndexCompareByDatabaseResponse:
+      $ref: '#/components/schemas/IndexCompareByCollectionsResponse'
+
+    IndexSyncByCollectionsRequest:
+      $ref: '#/components/schemas/IndexCompareByCollectionsRequest'
+
+    IndexSyncByCollectionsResponse:
+      $ref: '#/components/schemas/IndexUpdateResponse'
+
+    IndexSyncByDatabaseRequest:
+      $ref: '#/components/schemas/IndexCompareByDatabaseRequest'
+
+    IndexSyncByDatabaseResponse:
+      $ref: '#/components/schemas/IndexUpdateResponse'
+
+    IndexSyncFromDatabaseRequest:
+      $ref: '#/components/schemas/IndexCompareByDatabaseRequest'
+
+    IndexSyncFromDatabaseResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 200
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: object
+          properties:
+            imported_count:
+              type: integer
+              description: Number of indexes imported
+            skipped_count:
+              type: integer
+              description: Number of indexes skipped (already exist)
+      required:
+        - status_code
+        - error_code
+        - data
+
+    IndexSyncStatusResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 200
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: object
+          properties:
+            id:
+              $ref: '#/components/schemas/ObjectID'
+            database_id:
+              $ref: '#/components/schemas/ObjectID'
+            status:
+              type: string
+              description: Sync status (pending, processing, completed, failed)
+            progress:
+              type: integer
+              minimum: 0
+              maximum: 100
+              description: Progress percentage
+            error:
+              type: string
+              nullable: true
+            collections:
+              type: array
+              items:
+                type: string
+            is_finished:
+              type: boolean
+            started_at:
+              $ref: '#/components/schemas/DateTime'
+            completed_at:
+              $ref: '#/components/schemas/DateTime'
+              nullable: true
+            created_at:
+              $ref: '#/components/schemas/DateTime'
+            updated_at:
+              $ref: '#/components/schemas/DateTime'
+      required:
+        - status_code
+        - error_code
+        - data
+
+    IndexSyncStatusListItem:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/ObjectID'
+        status:
+          type: string
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        error:
+          type: string
+          nullable: true
+        is_finished:
+          type: boolean
+        started_at:
+          $ref: '#/components/schemas/DateTime'
+        completed_at:
+          $ref: '#/components/schemas/DateTime'
+          nullable: true
+        created_at:
+          $ref: '#/components/schemas/DateTime'
+
+    IndexSyncStatusListResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponseWithPagination'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/IndexSyncStatusListItem'
+
+  responses:
+    BadRequest:
+      description: Bad request - validation errors or invalid data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status_code: 400
+            error_code: 0
+            error: "Field wrong type"
+
+    Unauthorized:
+      description: Unauthorized - missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status_code: 401
+            error_code: 0
+            error: "Token is required"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status_code: 404
+            error_code: 0
+            error: "Resource not found"
+
+    Conflict:
+      description: Resource conflict - duplicate name or existing resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status_code: 409
+            error_code: 0
+            error: "Resource conflict"
+
+    PreconditionFailed:
+      description: Precondition failed - cannot connect to database or get indexes
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status_code: 412
+            error_code: 0
+            error: "Cannot connect to database"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status_code: 500
+            error_code: 0
+            error: "Internal server error"
+
+paths:
+  # Authentication Endpoints
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user account
+      description: Create a new user account with username, email, and password
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthRegisterResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user and get tokens
+      description: Login with username/email and password to receive access and refresh tokens
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthLoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /auth/refresh-token:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Obtain new access and refresh tokens using a valid refresh token
+      operationId: refreshToken
+      security:
+        - refreshTokenAuth: []
+      responses:
+        '200':
+          description: Tokens refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthRefreshTokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/profile:
+    get:
+      tags:
+        - Authentication
+      summary: Get user profile
+      description: Get the authenticated user's profile information
+      operationId: getProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      tags:
+        - Authentication
+      summary: Update user profile
+      description: Update the authenticated user's profile information
+      operationId: updateProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthUpdateProfileRequest'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUpdateProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # Database Endpoints
+  /databases/:
+    post:
+      tags:
+        - Database
+      summary: Create a new database connection
+      description: Create a new database connection configuration
+      operationId: createDatabase
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatabaseCreateRequest'
+      responses:
+        '201':
+          description: Database created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseCreateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+
+  /databases/{id}:
+    get:
+      tags:
+        - Database
+      summary: Get database by ID
+      description: Get database details by ID
+      operationId: getDatabase
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ObjectID'
+          description: Database ObjectID
+      responses:
+        '200':
+          description: Database retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseGetResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /databases/list:
+    post:
+      tags:
+        - Database
+      summary: List databases
+      description: Get a paginated list of databases with optional search
+      operationId: listDatabases
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatabaseListRequest'
+      responses:
+        '200':
+          description: Databases retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /databases/{id}/:
+    put:
+      tags:
+        - Database
+      summary: Update database
+      description: Update database connection configuration
+      operationId: updateDatabase
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ObjectID'
+          description: Database ObjectID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatabaseUpdateRequest'
+      responses:
+        '200':
+          description: Database updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseUpdateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+
+    delete:
+      tags:
+        - Database
+      summary: Delete database
+      description: Delete a database configuration and all associated indexes
+      operationId: deleteDatabase
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ObjectID'
+          description: Database ObjectID
+      responses:
+        '200':
+          description: Database deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseDeleteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /databases/collections/list:
+    post:
+      tags:
+        - Database
+      summary: List collections
+      description: Get a paginated list of collections for a database with index counts
+      operationId: listCollections
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatabaseListCollectionsRequest'
+      responses:
+        '200':
+          description: Collections retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseListCollectionsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Index Endpoints
+  /indexes/:
+    post:
+      tags:
+        - Index
+      summary: Create a new index
+      description: Create a new index definition
+      operationId: createIndex
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndexCreateRequest'
+      responses:
+        '201':
+          description: Index created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexCreateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /indexes/{id}:
+    get:
+      tags:
+        - Index
+      summary: Get index by ID
+      description: Get index details by ID
+      operationId: getIndex
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ObjectID'
+          description: Index ObjectID
+      responses:
+        '200':
+          description: Index retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexGetResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Index
+      summary: Update index
+      description: Update an existing index definition
+      operationId: updateIndex
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ObjectID'
+          description: Index ObjectID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndexUpdateRequest'
+      responses:
+        '200':
+          description: Index updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexUpdateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+    delete:
+      tags:
+        - Index
+      summary: Delete index
+      description: Delete an index definition
+      operationId: deleteIndex
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ObjectID'
+          description: Index ObjectID
+      responses:
+        '200':
+          description: Index deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexDeleteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /indexes/list-by-collection:
+    post:
+      tags:
+        - Index
+      summary: List indexes by collection
+      description: Get a paginated list of indexes for a specific collection
+      operationId: listIndexesByCollection
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndexListByCollectionRequest'
+      responses:
+        '200':
+          description: Indexes retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexListByCollectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /indexes/compare-by-collections:
+    post:
+      tags:
+        - Index
+      summary: Compare indexes by collections
+      description: Compare indexes in the manager with indexes in the actual MongoDB database for specific collections
+      operationId: compareIndexesByCollections
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndexCompareByCollectionsRequest'
+      responses:
+        '200':
+          description: Comparison completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexCompareByCollectionsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+
+  /indexes/compare-by-database:
+    post:
+      tags:
+        - Index
+      summary: Compare indexes by database
+      description: Compare all indexes in the manager with indexes in the actual MongoDB database
+      operationId: compareIndexesByDatabase
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndexCompareByDatabaseRequest'
+      responses:
+        '200':
+          description: Comparison completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexCompareByDatabaseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+
+  /indexes/sync-by-collections:
+    post:
+      tags:
+        - Index
+      summary: Sync indexes by collections
+      description: |
+        Synchronize indexes from the manager to the actual MongoDB database for specific collections (async operation).
+        This is an asynchronous operation that runs in the background. Creates missing indexes and removes redundant indexes.
+      operationId: syncIndexesByCollections
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndexSyncByCollectionsRequest'
+      responses:
+        '200':
+          description: Sync job queued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexSyncByCollectionsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /indexes/sync-by-database:
+    post:
+      tags:
+        - Index
+      summary: Sync indexes by database
+      description: |
+        Synchronize all indexes from the manager to the actual MongoDB database (async operation).
+        This is an asynchronous operation that runs in the background. Compares all collections that have indexes in the manager.
+      operationId: syncIndexesByDatabase
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndexSyncByDatabaseRequest'
+      responses:
+        '200':
+          description: Sync job queued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexSyncByDatabaseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /indexes/sync-from-database:
+    post:
+      tags:
+        - Index
+      summary: Import indexes from database
+      description: |
+        Import indexes from the actual MongoDB database to the manager.
+        This operation synchronizes indexes from the database to the manager (opposite direction of sync-by-collections).
+      operationId: syncIndexesFromDatabase
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndexSyncFromDatabaseRequest'
+      responses:
+        '200':
+          description: Indexes imported successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexSyncFromDatabaseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+
+  /indexes/sync-status/{sync_id}:
+    get:
+      tags:
+        - Index
+      summary: Get sync status by sync ID
+      description: Get the status of a specific sync operation by its sync ID
+      operationId: getSyncStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sync_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ObjectID'
+          description: Sync operation ObjectID
+      responses:
+        '200':
+          description: Sync status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexSyncStatusResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /indexes/sync-status/by-database/{database_id}:
+    get:
+      tags:
+        - Index
+      summary: Get sync status list by database
+      description: Get a list of all sync operations for a specific database, ordered by creation time (descending)
+      operationId: getSyncStatusByDatabase
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: database_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ObjectID'
+          description: Database ObjectID
+      responses:
+        '200':
+          description: Sync status list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexSyncStatusListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'

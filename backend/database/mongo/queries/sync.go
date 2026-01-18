@@ -11,6 +11,7 @@ import (
 	mongoDriver "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
+	"doctor-manager-api/common/constants"
 	"doctor-manager-api/common/response"
 	respErr "doctor-manager-api/common/response/error"
 	"doctor-manager-api/database/mongo"
@@ -134,7 +135,7 @@ func (q *syncQuery) UpdateIsFinishedById(id primitive.ObjectID, isFinished bool)
 	}
 	if isFinished {
 		now := time.Now()
-		updateFields["status"] = "completed"
+		updateFields["status"] = constants.SyncStatusCompleted
 		updateFields["completed_at"] = now
 		updateFields["progress"] = 100
 	}
@@ -162,7 +163,7 @@ func (q *syncQuery) UpdateStatusById(id primitive.ObjectID, status string, progr
 	if errorMsg != "" {
 		updateFields["error"] = errorMsg
 	}
-	if status == "completed" || status == "failed" {
+	if status == constants.SyncStatusCompleted || status == constants.SyncStatusFailed {
 		now := time.Now()
 		updateFields["completed_at"] = now
 		updateFields["is_finished"] = true
