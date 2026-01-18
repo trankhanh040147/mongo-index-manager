@@ -1,0 +1,41 @@
+/* CompareIndexes.css */
+
+.selected-row {
+    background-color: #d1ecf1;
+    transition: background-color 0.3s ease-in-out;
+}
+
+.selected-row td, .selected-row th {
+    transition: background-color 0.3s ease-in-out;
+}
+
+.selected-row:hover {
+    background-color: #c3e6cb;
+}
+
+@keyframes floating {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* CSS */
+.group-title {
+    background-color: #f0f0f0; /* Background color for group titles */
+}
+
+.row-matched {
+    /*background-color: #; */
+}
+
+.row-missing {
+    background-color: #d3f3e2;
+}
+
+.row-extra {
+    background-color: #f8d7da;
+}
+

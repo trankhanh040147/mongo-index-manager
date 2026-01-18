@@ -1,0 +1,34 @@
+/* SyncHistoryComponent.css */
+.sync-history {
+    margin: 20px;
+}
+
+.error-row {
+    background-color: #ffe6e6;
+}
+
+.success-row {
+    background-color: #e6ffe6;
+}
+
+.error-icon {
+    color: red;
+}
+
+.success-icon {
+    color: green;
+}
+
+.syncing-icon {
+    color: orange;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}

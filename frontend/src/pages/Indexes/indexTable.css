@@ -1,0 +1,20 @@
+.key-item {
+    margin-bottom: 5px;
+    padding: 5px;
+    border-radius: 5px;
+    background-color: #f2f2f2;
+    border: 1px solid #ccc;
+    width: fit-content;
+}
+
+.field {
+    font-weight: bold;
+}
+
+.ascending {
+    background-color: lightgreen; /* Add your desired background color for ascending values */
+}
+
+.descending {
+    background-color: lightcoral; /* Add your desired background color for descending values */
+}
