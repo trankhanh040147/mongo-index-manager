@@ -3,7 +3,7 @@ import {saveAs} from 'file-saver';
 import {
     postIndex,
     getIndexListApi,
-    deleteIndexListApi, putIndex, compareByCollectionAPI, compareByDatabaseAPI, exportIndexesApi, importIndexesApi
+    deleteIndexListApi, putIndex, compareByCollectionAPI, compareByDatabaseAPI, exportIndexesApi, importIndexesApi, getIndex
 } from "../../helpers/backend_helper";
 
 import {apiError, loginSuccess} from "../auth/login/reducer";
@@ -41,8 +41,10 @@ export const createIndex = createAsyncThunk(
             }
             return data
         } catch (error) {
-            const errorMessage = error.response?.data?.message || "Create Index Failed";
-            // toast.error(errorMessage, {autoClose: 3000});
+            const errorData = error.response?.data;
+            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+                ? errorData.error 
+                : (errorData?.message || error.message || "Create Index Failed");
             console.log("error: ", error);
             thunkAPI.dispatch(postIndexError(errorMessage))
         }
@@ -76,7 +78,10 @@ export const updateIndex = createAsyncThunk(
             }
             return data
         } catch (error) {
-            const errorMessage = error.response?.data?.message || "Update Index Failed";
+            const errorData = error.response?.data;
+            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+                ? errorData.error 
+                : (errorData?.message || error.message || "Update Index Failed");
             toast.error(errorMessage, {autoClose: 3000});
             console.dir("error: ", error);
             console.log("error: ", error);
@@ -97,10 +102,14 @@ export const getIndexList = createAsyncThunk("indexes/getIndexList",
 
             const response = getIndexListApi(params);
             let dataResponse = await response
-            let data = dataResponse.data
-            if (data) {
-                return data;
+            if (dataResponse && dataResponse.data !== undefined) {
+                return {
+                    records: dataResponse.data,
+                    data: dataResponse.data,
+                    extra: dataResponse.extra
+                };
             }
+            return dataResponse;
 
         } catch (error) {
             return error;
@@ -115,13 +124,17 @@ export const exportIndexes = createAsyncThunk("indexes/export",
 
             const response = exportIndexesApi(params);
             let dataResponse = await response
-            if (dataResponse) {
-                const blob = new Blob([JSON.stringify(dataResponse, null, 2)], {type: 'application/json'});
+            if (dataResponse && dataResponse.data) {
+                const blob = new Blob([JSON.stringify(dataResponse.data, null, 2)], {type: 'application/json'});
                 saveAs(blob, 'exported_data.json');
-                console.log(dataResponse);
-                return dataResponse;
+                return dataResponse.data;
             }
         } catch (error) {
+            const errorData = error.response?.data;
+            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+                ? errorData.error 
+                : (errorData?.message || error.message || "Export Failed");
+            toast.error(errorMessage, {autoClose: 3000});
             return error;
         }
     });
@@ -146,17 +159,42 @@ export const importIndexes = createAsyncThunk("indexes/import",
     });
 
 
+export const getIndexById = createAsyncThunk("indexes/getIndexById", async (id) => {
+    try {
+        setAuthorization(getAccessToken());
+        const response = getIndex(id);
+        const dataResponse = await response;
+        if (dataResponse && dataResponse.data !== undefined) {
+            return dataResponse.data;
+        }
+        return dataResponse;
+    } catch (error) {
+        const errorData = error.response?.data;
+        const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+            ? errorData.error 
+            : (errorData?.message || error.message || "Get Index Failed");
+        toast.error(errorMessage, {autoClose: 3000});
+        return error;
+    }
+});
+
 export const deleteIndexList = createAsyncThunk("indexes/deleteIndexList", async ({data}) => {
     try {
         setAuthorization(getAccessToken());
         const response = deleteIndexListApi(data.id);
-        let newdata = await response;
-        toast.success("Delete Successfully", {autoClose: 3000});
-        console.log(data)
-        console.log(newdata)
-        return newdata;
+        const dataResponse = await response;
+        if (dataResponse && dataResponse.status_code >= 200 && dataResponse.status_code < 300) {
+            toast.success("Delete Successfully", {autoClose: 3000});
+            return { id: data.id, data: dataResponse.data };
+        } else {
+            throw new Error("Delete failed");
+        }
     } catch (error) {
-        toast.error("Delete Failed", {autoClose: 3000});
+        const errorData = error.response?.data;
+        const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+            ? errorData.error 
+            : (errorData?.message || error.message || "Delete Failed");
+        toast.error(errorMessage, {autoClose: 3000});
         return error;
     }
 });

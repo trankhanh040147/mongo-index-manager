@@ -107,10 +107,11 @@ const ListTables = () => {
         useEffect(() => {
             console.log(databaseLists)
             setDatabase(databaseLists);
-            if (databaseLists && databaseLists.paging) {
+            const pagination = databaseLists?.extra;
+            if (pagination) {
                 const pagingData = {
-                    ...databaseLists.paging,
-                    totalPages: Math.ceil(databaseLists.paging.total / databaseLists.paging.limit)
+                    ...pagination,
+                    totalPages: Math.ceil((pagination.total || 0) / (pagination.limit || 1))
                 };
                 setPaging(pagingData);
             }

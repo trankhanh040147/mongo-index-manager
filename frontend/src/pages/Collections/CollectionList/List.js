@@ -38,10 +38,11 @@ const Collections = () => {
     }, [dispatch, reload]);
 
     useEffect(() => {
-        if (collectionLists && collectionLists.paging) {
+        const pagination = collectionLists?.extra;
+        if (pagination) {
             const pagingData = {
-                ...collectionLists.paging,
-                totalPages: Math.ceil(collectionLists.paging.total / collectionLists.paging.limit)
+                ...pagination,
+                totalPages: Math.ceil((pagination.total || 0) / (pagination.limit || 1))
             };
             setPage(pagingData);
         }

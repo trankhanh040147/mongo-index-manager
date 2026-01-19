@@ -1,17 +1,18 @@
 //REGISTER
-export const POST_FAKE_REGISTER = "/signup";
+export const POST_FAKE_REGISTER = "/auth/register";
 
 //LOGIN
-export const POST_FAKE_LOGIN = "/login";
+export const POST_FAKE_LOGIN = "/auth/login";
 export const POST_FAKE_JWT_LOGIN = "/post-jwt-login";
 export const POST_FAKE_PASSWORD_FORGET = "/auth/forgot-password";
 export const POST_FAKE_JWT_PASSWORD_FORGET = "/jwt-forget-pwd";
 export const SOCIAL_LOGIN = "/social-login";
+export const POST_REFRESH_TOKEN = "/auth/refresh-token";
 
 //PROFILE
-export const GET_PROFILE = "/profile";
+export const GET_PROFILE = "/auth/profile";
 export const POST_EDIT_JWT_PROFILE = "/post-jwt-profile";
-export const POST_EDIT_PROFILE = "/profile";
+export const POST_EDIT_PROFILE = "/auth/profile";
 
 // Calendar
 export const GET_EVENTS = "/events";
@@ -228,24 +229,27 @@ export const GET_APPLICATION_LIST = "/application-list";
 export const GET_API_KEY = "/api-key";
 
 // -------------------------
-export const GET_DATABASES = "/databases";
-export const GET_DATABASES_LIST = "/databases";
+export const GET_DATABASE = "/databases";
+export const GET_DATABASES_LIST = "/databases/list";
 export const DELETE_DATABASE = "/databases";
-export const POST_DATABASE = "/databases";
+export const POST_DATABASE = "/databases/";
 export const PUT_DATABASE = "/databases";
+export const GET_COLLECTIONS_LIST = "/databases/collections/list";
 
 export const GET_COLLECTIONS = "/collections";
-export const GET_COLLECTIONS_LIST = "/collections";
 export const DELETE_COLLECTION = "/collections";
 export const POST_COLLECTION = "/collections";
 export const PUT_COLLECTION = "/collections";
 
-export const URL_INDEX = "/indexes";
+export const URL_INDEX = "/indexes/";
+export const GET_INDEX = "/indexes";
+export const URL_INDEX_LIST = "/indexes/list-by-collection";
 export const URL_INDEX_EXPORT = "/indexes/export";
 export const URL_INDEX_IMPORT = "/import";
-export const URL_COMPARE_COLLECTION = "/indexes/comparing/collection";
-export const URL_COMPARE_DATABASE = "/indexes/comparing/database";
+export const URL_COMPARE_COLLECTION = "/indexes/compare-by-collections";
+export const URL_COMPARE_DATABASE = "/indexes/compare-by-database";
 
-export const URL_SYNC = "/syncing";
-export const URL_SYNC_BY_COLLECTION = "/indexes/syncing/collection";
-export const URL_SYNC_BY_DATABASE = "/indexes/syncing/database";
+export const URL_SYNC_STATUS_BY_DATABASE = "/indexes/sync-status/by-database";
+export const URL_SYNC_STATUS = "/indexes/sync-status";
+export const URL_SYNC_BY_COLLECTION = "/indexes/sync-by-collections";
+export const URL_SYNC_BY_DATABASE = "/indexes/sync-by-database";

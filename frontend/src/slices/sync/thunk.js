@@ -1,7 +1,7 @@
 //Include Both Helper File with needed methods
 import {
     postSync,
-    getSyncListApi, compareByCollectionAPI, compareByDatabaseAPI, postSyncByCollection, postSyncByDatabase,
+    getSyncListApi, compareByCollectionAPI, compareByDatabaseAPI, postSyncByCollection, postSyncByDatabase, getSyncStatus,
 } from "../../helpers/backend_helper";
 
 import {apiError, loginSuccess} from "../auth/login/reducer";
@@ -39,12 +39,34 @@ export const createSync = createAsyncThunk(
             }
             return data
         } catch (error) {
-            const errorMessage = error.response?.data?.message || "Create Sync Failed";
+            const errorData = error.response?.data;
+            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+                ? errorData.error 
+                : (errorData?.message || error.message || "Create Sync Failed");
             toast.error(errorMessage, {autoClose: 3000});
             console.log("error: ", error);
             thunkAPI.dispatch(postSyncError(errorMessage))
         }
     });
+
+export const getSyncStatusById = createAsyncThunk("syncs/getSyncStatusById", async (syncId) => {
+    try {
+        setAuthorization(getAccessToken());
+        const response = getSyncStatus(syncId);
+        const dataResponse = await response;
+        if (dataResponse && dataResponse.data !== undefined) {
+            return dataResponse.data;
+        }
+        return dataResponse;
+    } catch (error) {
+        const errorData = error.response?.data;
+        const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+            ? errorData.error 
+            : (errorData?.message || error.message || "Get Sync Status Failed");
+        toast.error(errorMessage, {autoClose: 3000});
+        return error;
+    }
+});
 
 export const getSyncHistory = createAsyncThunk("syncs/getSyncList", async (params) => {
     try {
@@ -71,6 +93,7 @@ export const compareByCollection = createAsyncThunk("indexes/comparing/collectio
 
             response = compareByCollectionAPI(values);
             let resp = await response;
+            // resp is now {status_code, error_code, data} after interceptor
             let data = resp.data
 
             if (data) {
@@ -96,7 +119,8 @@ export const compareByDatabase = createAsyncThunk("indexes/comparing/database",
 
             response = compareByDatabaseAPI(values);
             let resp = await response;
-            let data = resp.data.result
+            // resp is now {status_code, error_code, data} after interceptor
+            let data = resp.data
 
             if (data) {
                 console.log(data)

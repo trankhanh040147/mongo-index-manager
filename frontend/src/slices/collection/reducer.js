@@ -45,9 +45,16 @@ const CollectionsSlice = createSlice({
             state.error = action.payload || null;
         });
         builder.addCase(deleteCollectionList.fulfilled, (state, action) => {
-            if (action.payload.data) {
-                state.list.records = state.list.records.filter(collection => collection.id.toString() !== action.payload.id.toString());
-                state.list.paging.total -= 1
+            if (action.payload && action.payload.data) {
+                if (state.list.records) {
+                    state.list.records = state.list.records.filter(collection => collection.id.toString() !== action.payload.id.toString());
+                }
+                if (state.list.data) {
+                    state.list.data = state.list.data.filter(collection => collection.id.toString() !== action.payload.id.toString());
+                }
+                if (state.list.extra) {
+                    state.list.extra.total = (state.list.extra.total || 0) - 1
+                }
             }
             state.reload += 1
         });

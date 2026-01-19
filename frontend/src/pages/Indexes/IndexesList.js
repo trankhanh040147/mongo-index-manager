@@ -58,10 +58,11 @@ const IndexesListComponent = ({}) => {
     useEffect(() => {
         console.log(indexLists)
         setIndex(indexLists);
-        if (indexLists && indexLists.paging) {
+        const pagination = indexLists?.extra;
+        if (pagination) {
             const pagingData = {
-                ...indexLists.paging,
-                totalPages: Math.ceil(indexLists.paging.total / indexLists.paging.limit)
+                ...pagination,
+                totalPages: Math.ceil((pagination.total || 0) / (pagination.limit || 1))
             };
             setPaging(pagingData);
         }

@@ -18,14 +18,17 @@ export const registerUser = (user) => async (dispatch) => {
         response = postFakeRegister(user);
         const data = await response;
 
-        console.log(data.data.status)
-        if (data.data.status === true) {
+        if (data && data.status_code === 201 && data.data && data.data.success === true) {
             dispatch(registerUserSuccessful(data));
         } else {
             dispatch(registerUserFailed(data));
         }
     } catch (error) {
-        dispatch(registerUserFailed(error));
+        const errorData = error.response?.data;
+        const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+            ? errorData.error 
+            : (errorData?.message || error.message || "Registration Failed");
+        dispatch(registerUserFailed(errorMessage));
     }
 };
 

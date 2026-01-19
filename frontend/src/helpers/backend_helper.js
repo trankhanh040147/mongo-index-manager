@@ -23,6 +23,18 @@ export const postFakeRegister = data => api.create(url.POST_FAKE_REGISTER, data)
 // Login Method
 export const postFakeLogin = data => api.create(url.POST_FAKE_LOGIN, data);
 
+export const postRefreshToken = (refreshToken) => {
+    // Use a temporary axios instance with refresh token in Authorization header
+    const axios = require('axios');
+    const {api} = require('../config');
+    return axios.post(`${api.API_URL}${url.POST_REFRESH_TOKEN}`, {}, {
+        headers: {
+            'Authorization': `Bearer ${refreshToken}`,
+            'Content-Type': 'application/json'
+        }
+    });
+};
+
 // Get Profile
 export const getProfile = data => api.get(url.GET_PROFILE, data)
 
@@ -372,9 +384,10 @@ export const getAPIKey = () => api.get(url.GET_API_KEY);
 
 
 export const postDatabase = (data) => api.create(url.POST_DATABASE, data);
-export const putDatabase = (data) => api.put(url.PUT_DATABASE + '/' + data.id, data);
-export const getDatabaseListApi = (params) => api.get(url.GET_DATABASES, params);
-export const getDatabases = (data) => api.get(url.GET_DATABASES, data);
+export const putDatabase = (data) => api.put(url.PUT_DATABASE + '/' + data.id + '/', data);
+export const getDatabase = (id) => api.get(url.GET_DATABASE + '/' + id);
+export const getDatabaseListApi = (params) => api.create(url.GET_DATABASES_LIST, params);
+export const getDatabases = (data) => api.create(url.GET_DATABASES_LIST, data);
 // export const deleteDatabaseListApi = (database) => api.delete(url.DELETE_DATABASE, {headers: {database}});
 export const deleteDatabaseListApi = (id) => {
     return api.delete(`${url.DELETE_DATABASE}/${id}`);
@@ -382,16 +395,17 @@ export const deleteDatabaseListApi = (id) => {
 
 export const postCollection = (id, data) => api.create(url.POST_DATABASE + '/' + id + '/collections', data);
 export const putCollection = (data) => api.put(url.PUT_COLLECTION + '/' + data.id, data);
-export const getCollectionListApi = (params) => api.get(url.GET_DATABASES + '/' + params.id + '/collections', params);
-export const getCollections = (data) => api.get(url.GET_COLLECTIONS, data);
+export const getCollectionListApi = (params) => api.create(url.GET_COLLECTIONS_LIST, params);
+export const getCollections = (data) => api.create(url.GET_COLLECTIONS_LIST, data);
 // export const deleteCollectionListApi = (database) => api.delete(url.DELETE_COLLECTION, {headers: {database}});
 export const deleteCollectionListApi = (id) => {
     return api.delete(`${url.DELETE_COLLECTION}/${id}`);
 };
 
 export const postIndex = (data) => api.create(url.URL_INDEX, data);
-export const putIndex = (data) => api.put(url.URL_INDEX + '/' + data.id, data);
-export const getIndexListApi = (params) => api.get(url.URL_INDEX, params);
+export const getIndex = (id) => api.get(url.GET_INDEX + '/' + id);
+export const putIndex = (data) => api.put(url.GET_INDEX + '/' + data.id, data);
+export const getIndexListApi = (params) => api.create(url.URL_INDEX_LIST, params);
 export const exportIndexesApi = (data) => api.create(url.URL_INDEX_EXPORT, data);
 export const importIndexesApi = (data) => api.createForm(url.URL_INDEX + '/' + data.database_id + URL_INDEX_IMPORT, data);
 export const deleteIndexListApi = (id) => {
@@ -402,4 +416,12 @@ export const compareByDatabaseAPI = (data) => api.create(url.URL_COMPARE_DATABAS
 
 export const postSyncByCollection = (data) => api.create(url.URL_SYNC_BY_COLLECTION, data);
 export const postSyncByDatabase = (data) => api.create(url.URL_SYNC_BY_DATABASE, data);
-export const getSyncListApi = (params) => api.get(url.URL_SYNC, params);
+export const getSyncStatusByDatabase = (databaseId, params) => api.get(url.URL_SYNC_STATUS_BY_DATABASE + '/' + databaseId, params);
+export const getSyncStatus = (syncId) => api.get(url.URL_SYNC_STATUS + '/' + syncId);
+export const getSyncListApi = (params) => {
+    if (params && params.database_id) {
+        return getSyncStatusByDatabase(params.database_id, params);
+    }
+    // If no database_id provided, throw error or return empty - endpoint requires database_id
+    throw new Error("database_id is required for getSyncListApi");
+};

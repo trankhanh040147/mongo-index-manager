@@ -31,12 +31,19 @@ export const userForgetPassword = (user, history) => async (dispatch) => {
 
         const data = await response;
 
-        if (data) {
+        if (data && data.status_code >= 200 && data.status_code < 300) {
             dispatch(userForgetPasswordSuccess(
                 "Reset link are sended to your mailbox, check there first"
             ))
+        } else {
+            const errorMessage = data?.error || "Failed to send reset link";
+            dispatch(userForgetPasswordError(errorMessage));
         }
     } catch (forgetError) {
-        dispatch(userForgetPasswordError(forgetError))
+        const errorData = forgetError.response?.data;
+        const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+            ? errorData.error 
+            : (errorData?.message || forgetError.message || "Failed to send reset link");
+        dispatch(userForgetPasswordError(errorMessage))
     }
 }

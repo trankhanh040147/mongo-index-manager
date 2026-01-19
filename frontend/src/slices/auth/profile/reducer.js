@@ -11,14 +11,12 @@ const ProfileSlice = createSlice({
     initialState,
     reducers: {
         profileSuccess(state, action) {
-            state.success = action.payload.status;
-            state.user = action.payload.data
-            console.log('state.user:', state.user)
+            state.success = true;
+            state.user = action.payload
         },
         getProfileSuccess(state, action) {
-            state.success = action.payload.status;
-            state.user = action.payload.data
-            console.log('state.user:', state.user)
+            state.success = true;
+            state.user = action.payload
         },
         profileError(state, action) {
             state.error = action.payload

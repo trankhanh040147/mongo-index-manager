@@ -15,13 +15,14 @@ const token = JSON.parse(localStorage.getItem("tokens")) ? JSON.parse(localStora
 if (token)
     axios.defaults.headers.common["Authorization"] = "Bearer " + token;
 
-// intercepting to capture errors
 axios.interceptors.response.use(
     function (response) {
-        return response.data ? response.data : response;
+        if (response && response.data) {
+            return response.data;
+        }
+        return response;
     },
-    function (error) {
-        // Any status codes that falls outside the range of 2xx cause this function to trigger
+    async function (error) {
         console.log("API Error")
         console.log(error)
         let message;
@@ -31,6 +32,31 @@ axios.interceptors.response.use(
                     message = "Internal Server Error";
                     break;
                 case 401:
+                    const tokens = getTokens();
+                    if (tokens && tokens.refresh_token && !error.config._retry) {
+                        error.config._retry = true;
+                        try {
+                            const refreshResponse = await axios.post(
+                                `${api.API_URL}/auth/refresh-token`,
+                                {},
+                                {
+                                    headers: {
+                                        'Authorization': `Bearer ${tokens.refresh_token}`,
+                                        'Content-Type': 'application/json'
+                                    }
+                                }
+                            );
+                            if (refreshResponse && refreshResponse.data && refreshResponse.data.data) {
+                                const newTokens = refreshResponse.data.data;
+                                localStorage.setItem("tokens", JSON.stringify(newTokens));
+                                setAuthorization(newTokens.access_token);
+                                error.config.headers['Authorization'] = `Bearer ${newTokens.access_token}`;
+                                return axios.request(error.config);
+                            }
+                        } catch (refreshError) {
+                            console.log("Token refresh failed:", refreshError);
+                        }
+                    }
                     message = "Invalid credentials";
                     localStorage.removeItem("authUser");
                     localStorage.removeItem("tokens");
@@ -48,14 +74,18 @@ axios.interceptors.response.use(
                     message = error.message || error;
             }
         }
-        let apiMessage = error.response.data.message;
-        if (apiMessage) {
-            message = apiMessage;
+        if (error.response && error.response.data) {
+            const errorData = error.response.data;
+            if (errorData.error !== undefined) {
+                message = typeof errorData.error === 'string' ? errorData.error : JSON.stringify(errorData.error);
+            } else if (errorData.message) {
+                message = errorData.message;
+            }
         }
         toast.error(message, {
             autoClose: 3000,
         });
-        return Promise.reject(message);
+        return Promise.reject(error);
     }
 );
 /**

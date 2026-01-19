@@ -61,29 +61,30 @@ const Settings = () => {
         if (localStorage.getItem("authUser")) {
             const obj = JSON.parse(localStorage.getItem("authUser"));
 
-            if (!isEmpty(user)) {
-                obj.data.first_name = user.first_name
-                // obj.data.avatar = user.avatar;
-                localStorage.removeItem("authUser");
-                localStorage.setItem("authUser", JSON.stringify(obj));
+            if (obj && obj.data) {
+                if (!isEmpty(user)) {
+                    obj.data.first_name = user.first_name
+                    localStorage.removeItem("authUser");
+                    localStorage.setItem("authUser", JSON.stringify(obj));
+                }
+
+                setUserName(obj.data.username || "");
+                setEmail(obj.data.email || "");
+                setFirstName(obj.data.first_name || "");
+                setLastName(obj.data.last_name || "");
+                setPhone(obj.data.phone || "");
+                setBirthday(obj.data.birthday ? new Date(obj.data.birthday) : null)
+                setUserAvatar(obj.data.avatar !== "" ? obj.data.avatar : avatar1);
+
+                let totalFilled = (obj.data.first_name !== "") + (obj.data.last_name !== "") + (obj.data.phone !== "") + (obj.data.birthday !== "") + (obj.data.avatar !== "");
+
+                console.log(totalFilled)
+                setProfileProgress(totalFilled / 5 * 100)
+
+                setTimeout(() => {
+                    dispatch(resetProfileFlag());
+                }, 3000);
             }
-
-            setUserName(obj.data.username);
-            setEmail(obj.data.email);
-            setFirstName(obj.data.first_name);
-            setLastName(obj.data.last_name);
-            setPhone(obj.data.phone);
-            setBirthday(new Date(obj.data.birthday))
-            setUserAvatar(obj.data.avatar !== "" ? obj.data.avatar : avatar1);
-
-            let totalFilled = (obj.data.first_name !== "") + (obj.data.last_name !== "") + (obj.data.phone !== "") + (obj.data.birthday !== "") + (obj.data.avatar !== "");
-
-            console.log(totalFilled)
-            setProfileProgress(totalFilled / 5 * 100)
-
-            setTimeout(() => {
-                dispatch(resetProfileFlag());
-            }, 3000);
         }
     }, [dispatch, user]);
 

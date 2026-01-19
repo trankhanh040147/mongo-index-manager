@@ -3,6 +3,7 @@ import {getFirebaseBackend} from "../../../helpers/firebase_helper";
 import {
     postFakeLogin,
     postJwtLogin,
+    postRefreshToken,
 } from "../../../helpers/backend_helper";
 
 import {loginSuccess, logoutUserSuccess, apiError, reset_login_flag} from './reducer';
@@ -79,6 +80,29 @@ export const socialLogin = (type, history) => async (dispatch) => {
 
     } catch (error) {
         dispatch(apiError(error));
+    }
+};
+
+export const refreshToken = () => async (dispatch) => {
+    try {
+        const tokens = JSON.parse(localStorage.getItem("tokens"));
+        if (!tokens || !tokens.refresh_token) {
+            throw new Error("No refresh token available");
+        }
+
+        const response = postRefreshToken(tokens.refresh_token);
+        const dataResponse = await response;
+
+        if (dataResponse && dataResponse.data) {
+            const newTokens = dataResponse.data;
+            localStorage.setItem("tokens", JSON.stringify(newTokens));
+            dispatch(loginSuccess(newTokens));
+            return newTokens;
+        }
+        throw new Error("Failed to refresh token");
+    } catch (error) {
+        dispatch(logoutUser());
+        throw error;
     }
 };
 

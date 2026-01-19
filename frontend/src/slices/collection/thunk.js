@@ -29,7 +29,10 @@ export const createCollection = createAsyncThunk(
             }
             return data
         } catch (error) {
-            const errorMessage = error.response?.data?.message || "Create Collection Failed";
+            const errorData = error.response?.data;
+            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+                ? errorData.error 
+                : (errorData?.message || error.message || "Create Collection Failed");
             toast.error(errorMessage, {autoClose: 3000});
             thunkAPI.dispatch(collectionActions.postCollectionError(errorMessage))
         }
@@ -55,7 +58,10 @@ export const updateCollection = createAsyncThunk(
             }
             return data
         } catch (error) {
-            const errorMessage = error.response?.data?.message || "Update Collection Failed";
+            const errorData = error.response?.data;
+            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+                ? errorData.error 
+                : (errorData?.message || error.message || "Update Collection Failed");
             toast.error(errorMessage, {autoClose: 3000});
             thunkAPI.dispatch(collectionActions.postCollectionError(errorMessage))
         }
@@ -69,10 +75,14 @@ export const getCollectionList = createAsyncThunk("collections/getCollectionList
         }
         const response = getCollectionListApi(params);
         const dataResponse = await response
-        const data = dataResponse.data
-        if (data) {
-            return data;
+        if (dataResponse && dataResponse.data !== undefined) {
+            return {
+                records: dataResponse.data,
+                data: dataResponse.data,
+                extra: dataResponse.extra
+            };
         }
+        return dataResponse;
     } catch (error) {
         return error;
     }
@@ -82,11 +92,19 @@ export const deleteCollectionList = createAsyncThunk("collections/deleteCollecti
     try {
         setAuthorization(getAccessToken());
         const response = deleteCollectionListApi(params.id);
-        const data = await response;
-        toast.success("Delete Successfully", {autoClose: 3000});
-        return data;
+        const dataResponse = await response;
+        if (dataResponse && dataResponse.status_code >= 200 && dataResponse.status_code < 300) {
+            toast.success("Delete Successfully", {autoClose: 3000});
+            return { id: params.id, data: dataResponse.data };
+        } else {
+            throw new Error("Delete failed");
+        }
     } catch (error) {
-        toast.error("Delete Failed", {autoClose: 3000});
+        const errorData = error.response?.data;
+        const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+            ? errorData.error 
+            : (errorData?.message || error.message || "Delete Failed");
+        toast.error(errorMessage, {autoClose: 3000});
         return error;
     }
 });

@@ -16,8 +16,8 @@ export const getProfileUser = () => async (dispatch) => {
         const response = getProfile()
         let dataResponse = await response
         if (dataResponse) {
-            let data = dataResponse
-            localStorage.setItem("authUser", JSON.stringify(data));
+            let data = dataResponse.data
+            localStorage.setItem("authUser", JSON.stringify({data: data}));
             dispatch(getProfileSuccess(data));
         }
 
@@ -36,8 +36,16 @@ export const editProfile = (user) => async (dispatch) => {
 
         const data = await response;
 
-        if (data) {
-            dispatch(profileSuccess(data));
+        if (data && data.data) {
+            const profileData = data.data;
+            if (localStorage.getItem("authUser")) {
+                const existing = JSON.parse(localStorage.getItem("authUser"));
+                existing.data = {...existing.data, ...profileData};
+                localStorage.setItem("authUser", JSON.stringify(existing));
+            } else {
+                localStorage.setItem("authUser", JSON.stringify({data: profileData}));
+            }
+            dispatch(profileSuccess(profileData));
         }
 
 

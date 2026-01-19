@@ -53,16 +53,17 @@ const UserProfile = () => {
 
             console.log("use effect: ", user)
 
-            if (!isEmpty(user)) {
-                obj.data.username = user.username;
-                // obj.data.avatar = user.avatar;
-                localStorage.removeItem("authUser");
-                localStorage.setItem("authUser", JSON.stringify(obj));
-            }
+            if (obj && obj.data) {
+                if (!isEmpty(user)) {
+                    obj.data.username = user.username;
+                    localStorage.removeItem("authUser");
+                    localStorage.setItem("authUser", JSON.stringify(obj));
+                }
 
-            setUserName(obj.data.username);
-            setemail(obj.data.email);
-            setUserAvatar(obj.data.avatar)
+                setUserName(obj.data.username || "");
+                setemail(obj.data.email || "");
+                setUserAvatar(obj.data.avatar || "")
+            }
 
             setTimeout(() => {
                 dispatch(resetProfileFlag());

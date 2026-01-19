@@ -20,7 +20,7 @@ const DatabasesSlice = createSlice({
     },
     extraReducers: (builder) => {
         builder.addCase(getDatabaseList.fulfilled, (state, action) => {
-            state.list = action.payload;
+            state.list = action.payload || {};
         });
         builder.addCase(getDatabaseList.rejected, (state, action) => {
             state.error = action.payload || null;
@@ -43,9 +43,16 @@ const DatabasesSlice = createSlice({
             state.loading = false;
         });
         builder.addCase(deleteDatabaseList.fulfilled, (state, action) => {
-            if (action.payload.data) {
-                state.list.records = state.list.records.filter(database => database.id.toString() !== action.payload.id.toString());
-                state.list.paging.total -= 1
+            if (action.payload && action.payload.data) {
+                if (state.list.records) {
+                    state.list.records = state.list.records.filter(database => database.id.toString() !== action.payload.id.toString());
+                }
+                if (state.list.data) {
+                    state.list.data = state.list.data.filter(database => database.id.toString() !== action.payload.id.toString());
+                }
+                if (state.list.extra) {
+                    state.list.extra.total = (state.list.extra.total || 0) - 1
+                }
             }
             state.reload += 1
         });

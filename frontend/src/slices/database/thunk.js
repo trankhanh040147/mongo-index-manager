@@ -2,7 +2,7 @@
 import {
     postDatabase,
     getDatabaseListApi,
-    deleteDatabaseListApi, putDatabase
+    deleteDatabaseListApi, putDatabase, getDatabase
 } from "../../helpers/backend_helper";
 
 // action
@@ -39,7 +39,10 @@ export const createDatabase = createAsyncThunk(
             }
             return data
         } catch (error) {
-            const errorMessage = error.response?.data?.message || "Create Database Failed";
+            const errorData = error.response?.data;
+            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+                ? errorData.error 
+                : (errorData?.message || error.message || "Create Database Failed");
             toast.error(errorMessage, {autoClose: 3000});
             console.dir("error: ", error);
             console.log("error: ", error);
@@ -73,7 +76,10 @@ export const updateDatabase = createAsyncThunk(
             }
             return data
         } catch (error) {
-            const errorMessage = error.response?.data?.message || "Update Database Failed";
+            const errorData = error.response?.data;
+            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+                ? errorData.error 
+                : (errorData?.message || error.message || "Update Database Failed");
             toast.error(errorMessage, {autoClose: 3000});
             console.dir("error: ", error);
             console.log("error: ", error);
@@ -87,26 +93,56 @@ export const getDatabaseList = createAsyncThunk("databases/getDatabaseList", asy
 
         const response = getDatabaseListApi(params);
         const dataResponse = await response
-        const data = dataResponse.data
-        if (data) {
-            return data;
+        if (dataResponse && dataResponse.data !== undefined) {
+            return {
+                records: dataResponse.data,
+                data: dataResponse.data,
+                extra: dataResponse.extra
+            };
         }
+        return dataResponse;
 
     } catch (error) {
         return error;
     }
 });
 
-export const deleteDatabaseList = createAsyncThunk("databases/deleteDatabaseList", async (data, dispatch) => {
+export const getDatabaseById = createAsyncThunk("databases/getDatabaseById", async (id) => {
+    try {
+        setAuthorization(getAccessToken());
+        const response = getDatabase(id);
+        const dataResponse = await response;
+        if (dataResponse && dataResponse.data !== undefined) {
+            return dataResponse.data;
+        }
+        return dataResponse;
+    } catch (error) {
+        const errorData = error.response?.data;
+        const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+            ? errorData.error 
+            : (errorData?.message || error.message || "Get Database Failed");
+        toast.error(errorMessage, {autoClose: 3000});
+        return error;
+    }
+});
+
+export const deleteDatabaseList = createAsyncThunk("databases/deleteDatabaseList", async (data) => {
     try {
         setAuthorization(getAccessToken());
         const response = deleteDatabaseListApi(data.id);
-        const newdata = await response;
-        toast.success("Delete Successfully", {autoClose: 3000});
-        console.log(data)
-        return data;
+        const dataResponse = await response;
+        if (dataResponse && dataResponse.status_code >= 200 && dataResponse.status_code < 300) {
+            toast.success("Delete Successfully", {autoClose: 3000});
+            return { id: data.id, data: dataResponse.data };
+        } else {
+            throw new Error("Delete failed");
+        }
     } catch (error) {
-        toast.error("Delete Failed", {autoClose: 3000});
+        const errorData = error.response?.data;
+        const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
+            ? errorData.error 
+            : (errorData?.message || error.message || "Delete Failed");
+        toast.error(errorMessage, {autoClose: 3000});
         return error;
     }
 });

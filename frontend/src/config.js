@@ -1,13 +1,3 @@
-export const google = {
-    API_KEY: "",
-    CLIENT_ID: "",
-    SECRET: "",
-};
-
-export const facebook = {
-    APP_ID: "",
-};
-
 export const api = {
-    API_URL: "http://127.0.0.1:8080/doctor-manager/api/v1",
+    API_URL: process.env.REACT_APP_API_URL || "http://127.0.0.1:8216/api/doctor-manager-api/v1",
 };
