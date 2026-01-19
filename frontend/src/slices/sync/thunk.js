@@ -1,7 +1,7 @@
 //Include Both Helper File with needed methods
 import {
     postSync,
-    getSyncListApi, compareByCollectionAPI, compareByDatabaseAPI, postSyncByCollection, postSyncByDatabase, getSyncStatus,
+    getSyncListApi, compareByCollectionAPI, compareByDatabaseAPI, postSyncByCollection, postSyncByDatabase, postSyncFromDatabase, getSyncStatus,
 } from "../../helpers/backend_helper";
 
 import {apiError, loginSuccess} from "../auth/login/reducer";
@@ -46,6 +46,26 @@ export const createSync = createAsyncThunk(
             return thunkAPI.rejectWithValue(errorMessage);
         }
     });
+
+export const syncFromDatabase = createAsyncThunk(
+    "syncs/syncFromDatabase",
+    async ({values}, thunkAPI) => {
+        try {
+            setAuthorization(getAccessToken());
+            const resp = await postSyncFromDatabase(values);
+            const data = resp.data;
+            if (data) {
+                toast.success("Sync from Database started", {autoClose: 3000});
+                return data;
+            }
+            throw new Error("Sync from Database response missing data");
+        } catch (error) {
+            const errorMessage = getErrorMessage(error) || "Sync from Database Failed";
+            toast.error(errorMessage, {autoClose: 3000});
+            return thunkAPI.rejectWithValue(errorMessage);
+        }
+    }
+);
 
 export const getSyncStatusById = createAsyncThunk("syncs/getSyncStatusById", async (syncId, thunkAPI) => {
     try {

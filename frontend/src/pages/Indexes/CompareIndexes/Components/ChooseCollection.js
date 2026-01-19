@@ -20,7 +20,7 @@ const ChooseCollectionComponent = ({
 
     useEffect(() => {
         if (activeTab === 2) {
-            dispatch(onGetCollectionList({id: selectedDatabase.id, limit: 1000}));
+            dispatch(onGetCollectionList({database_id: selectedDatabase.id, limit: 1000}));
             console.log("Tab ChooseCollection loaded")
             setCompareMethod("database")
             setSelectedCollection(null)
@@ -33,7 +33,7 @@ const ChooseCollectionComponent = ({
     const selectDashboardData = createSelector(
         [selectCollectionState],
         (collections) => ({
-            collectionLists: collections.collectionLists,
+            collectionLists: collections.list,
             reload: collections.reload,
         })
     );

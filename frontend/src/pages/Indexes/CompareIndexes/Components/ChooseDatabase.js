@@ -26,7 +26,7 @@ const ChooseDatabaseComponent = ({setSelectedDatabase, activeTab}) => {
         })
     );
 
-    const {databaseLists, reload} = useSelector(selectDashboardData);
+    const {list: databaseLists, reload} = useSelector(selectDashboardData);
 
     useEffect(() => {
         console.log(databaseLists);

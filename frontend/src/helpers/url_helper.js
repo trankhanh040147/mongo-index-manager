@@ -253,3 +253,4 @@ export const URL_SYNC_STATUS_BY_DATABASE = "/indexes/sync-status/by-database";
 export const URL_SYNC_STATUS = "/indexes/sync-status";
 export const URL_SYNC_BY_COLLECTION = "/indexes/sync-by-collections";
 export const URL_SYNC_BY_DATABASE = "/indexes/sync-by-database";
+export const URL_SYNC_FROM_DATABASE = "/indexes/sync-from-database";

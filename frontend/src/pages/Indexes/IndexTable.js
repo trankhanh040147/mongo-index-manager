@@ -2,7 +2,7 @@ import React from 'react';
 import './indexTable.css';
 import {Button} from "reactstrap"; // Import your CSS file here
 
-const IndexTable = ({indexes, onEdit, onDelete, handleEdit, handleDelete}) => {
+const IndexTable = ({indexes, selectedIds, onToggleOne, onToggleAll, handleEdit, handleDelete}) => {
     const renderValueLabel = (value) => {
         switch (value) {
             case 1:
@@ -23,10 +23,17 @@ const IndexTable = ({indexes, onEdit, onDelete, handleEdit, handleDelete}) => {
                 <tr>
                     <th scope="col" style={{width: "50px"}}>
                         <div className="form-check">
-                            <input className="form-check-input" type="checkbox" id="checkAll" value="option"/>
+                            <input
+                                className="form-check-input"
+                                type="checkbox"
+                                id="checkAll"
+                                checked={indexes && indexes.length > 0 && selectedIds.length === indexes.length}
+                                onChange={onToggleAll}
+                            />
                         </div>
                     </th>
                     <th className="sort" data-sort="name">Name</th>
+                    <th className="sort" data-sort="key_signature">Key Signature</th>
                     <th className="sort" data-sort="keys">Keys</th>
                     <th className="sort" data-sort="is_unique">Is Unique</th>
                     <th className="sort" data-sort="expire_after_seconds">Expired After (s)</th>
@@ -39,10 +46,18 @@ const IndexTable = ({indexes, onEdit, onDelete, handleEdit, handleDelete}) => {
                     <tr key={index.id}>
                         <th scope="row">
                             <div className="form-check">
-                                <input className="form-check-input" type="checkbox" name="checkAll" value={index.id}/>
+                                <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    name="checkAll"
+                                    value={index.id}
+                                    checked={selectedIds.includes(index.id)}
+                                    onChange={() => onToggleOne(index.id)}
+                                />
                             </div>
                         </th>
                         <td className="name">{index.name}</td>
+                        <td className="key_signature">{index.key_signature || ""}</td>
                         <td className="keys">
                             {index.keys.map((keyItem, idx) => (
                                 <div key={idx}

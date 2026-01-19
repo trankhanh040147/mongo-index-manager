@@ -416,6 +416,7 @@ export const compareByDatabaseAPI = (data) => api.create(url.URL_COMPARE_DATABAS
 
 export const postSyncByCollection = (data) => api.create(url.URL_SYNC_BY_COLLECTION, data);
 export const postSyncByDatabase = (data) => api.create(url.URL_SYNC_BY_DATABASE, data);
+export const postSyncFromDatabase = (data) => api.create(url.URL_SYNC_FROM_DATABASE, data);
 export const getSyncStatusByDatabase = (databaseId, params) => api.get(url.URL_SYNC_STATUS_BY_DATABASE + '/' + databaseId, params);
 export const getSyncStatus = (syncId) => api.get(url.URL_SYNC_STATUS + '/' + syncId);
 export const getSyncListApi = (params) => {

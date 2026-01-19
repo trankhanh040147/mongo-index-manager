@@ -152,52 +152,58 @@
 ### B. Missing from Frontend
 
 #### Authentication
-- [ ] Refresh token handling (auto-refresh on 401)
-- [ ] Token expiration detection
-- [ ] Logout on token expiry
+- [x] Refresh token handling (auto-refresh on 401)
+- [x] Token expiration detection
+- [x] Logout on token expiry
 
 #### Database
-- [ ] Get single database details view
-- [ ] List collections with index counts
-- [ ] Database connection validation UI feedback
+- [x] List collections with index counts
 
 #### Index
-- [ ] View single index details
-- [ ] Index key signature display
-- [ ] Index creation timestamp display
+- [x] Index key signature display
+- [x] Index creation timestamp display
 
 #### Sync
-- [ ] Sync from Database (`POST /indexes/sync-from-database`) - import indexes from DB to manager
-- [ ] Sync status polling for active syncs
-- [ ] Sync progress indicator (progress percentage)
-- [ ] Sync error details display
-- [ ] Individual sync status view by sync_id
+- [x] Sync from Database (`POST /indexes/sync-from-database`) - import indexes from DB to manager
+- [x] Sync status polling for active syncs
+- [x] Sync progress indicator (progress percentage)
+- [x] Sync error details display
 
 #### UI/UX
-- [ ] Loading states for async operations
+- [x] Loading states for async operations
 - [ ] Error boundary for API errors
-- [ ] Pagination for large lists
+- [x] Pagination for large lists
 - [ ] Search/filter functionality
-- [ ] Bulk operations
+- [x] Bulk operations
+- [x] Route context guards: prevent API calls / redirect when required context missing (e.g., `/collections` needs current database; `/indexes` needs current database + collection)
+- [x] Fix “View Indexes” navigation: ensure selected collection is stored in Redux via `dispatch(collectionActions.setCollection(...))` before navigating to `/indexes` (otherwise backend returns `collection: required`)
+- [x] Compare flow bugs: `ChooseCollection` uses wrong request param (`id` vs `database_id`) and wrong selector (`collections.collectionLists` vs `collections.list`) causing missing/empty collections and potential backend validation errors
 
 ---
 
-### C. Missing from Backend
+## v0.2.1 - Final Test & Bug Reports
 
-#### Sync Options
+- [x] IS1: Refresh `/collections` or `/indexes` can throw `Cannot read properties of null` when required Redux context is missing
+- [x] IS2: Navigating directly to `/compare` shows an empty database list (no databases loaded)
+
+---
+
+## v0.3.0 - Missing from Backend
+
+### Sync Options
 - [ ] Sync options support (`option_missing`, `option_extra`) in sync endpoints
 - FE sends: `option_missing` (1=forward, 2=backward), `option_extra` (1=forward, 2=backward)
 - BE: Not in OpenAPI spec for sync endpoints
 
-#### Database
+### Database
 - [ ] `is_sync_index` flag support in DatabaseCreateRequest
 - FE sends `is_sync` flag but BE may not handle it
 
-#### Response Format
+### Response Format
 - [ ] Consistent error response format
 - FE expects `error.response.data.message`, verify BE returns this
 
-#### Sync Status
+### Sync Status
 - [ ] Sync status response format alignment
 - FE expects: `{records: [...], completed_tasks, total_tasks, database_name, collection_name}`
 - BE spec shows: `{id, status, progress, error, collections, is_finished, started_at, completed_at}`
@@ -205,9 +211,18 @@
 
 ---
 
-## v0.3.0 - Backend Implementation
+## v0.4.0 - Deferred Frontend & Backend Implementation
 
-### Sync Options Support
+### Deferred from v0.2.0 B (Frontend)
+
+- [ ] Get single database details view
+- [ ] Database connection validation UI feedback
+- [ ] View single index details
+- [ ] Individual sync status view by `sync_id`
+- [ ] Error boundary for API errors
+- [ ] Search/filter functionality
+
+### Backend Implementation
 
 - [ ] Add `option_missing` parameter to sync endpoints
   - Type: integer (1=forward/add to DB, 2=backward/add to manager)
@@ -225,23 +240,17 @@
   - `option_extra=1`: Remove redundant indexes from database
   - `option_extra=2`: Add redundant indexes to manager
 
-### Database Creation Enhancement
-
 - [ ] Add `is_sync_index` flag to `DatabaseCreateRequest`
   - Type: boolean
   - Default: false
   - If true, automatically sync indexes after database creation
   - Update OpenAPI spec
 
-### Sync Status Response Alignment
-
 - [ ] Align sync status response with FE expectations
   - Current BE spec: `{id, status, progress, error, collections, is_finished, started_at, completed_at}`
   - FE expects: `{records: [...], completed_tasks, total_tasks, database_name, collection_name}`
   - Decision: Update BE to match FE OR update FE to match BE spec
   - Update OpenAPI spec accordingly
-
-### Error Response Standardization
 
 - [ ] Ensure all error responses follow OpenAPI spec:
   ```json
@@ -253,8 +262,6 @@
   ```
 
 - [ ] Verify `error.response.data.message` compatibility (may need adapter)
-
-### Response Wrapper Consistency
 
 - [ ] Ensure all responses include `status_code` and `error_code`
 - [ ] Verify pagination uses `extra` object (not `paging`)

@@ -4,9 +4,10 @@ import {Container, Spinner} from 'reactstrap';
 import List from './List';
 import MyBreadCrumb from "../../../Components/Common/MyBreadCrumb";
 import {useSelector} from "react-redux";
+import {useRequireDatabase} from "../../../helpers/routeGuards";
 
 const CollectionList = () => {
-    const databaseCurrent = useSelector(state => state.Databases.current);
+    const databaseCurrent = useRequireDatabase();
     const dbName = databaseCurrent?.name ?? '…';
     useEffect(() => {
         document.title = `${dbName} | Collections`;
@@ -15,13 +16,13 @@ const CollectionList = () => {
         () => {
             return [
                 {
-                    id: 'db', label: `Databases [${databaseCurrent.name}]`, path: '/databases', active: false,
+                    id: 'db', label: `Databases [${databaseCurrent?.name || '...'}]`, path: '/databases', active: false,
                 },
                 {
                     id: 'coll', label: `Collections`, path: '/collections', active: true
                 },
             ]
-        }, [databaseCurrent.name]
+        }, [databaseCurrent?.name]
     )
 
     return (

@@ -4,6 +4,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import {SessionKeyCollection, SessionKeyDatabase} from "../common/const";
 import {api} from "../config";
 import {logoutUser} from "../slices/auth/login/thunk";
+import {isRefreshUsable} from "./jwt-token-access/auth-expiry";
 
 // default
 axios.defaults.baseURL = api.API_URL;
@@ -70,7 +71,7 @@ axios.interceptors.response.use(
                     break;
                 case 401:
                     const tokens = getTokens();
-                    if (tokens && tokens.refresh_token && !error.config._retry) {
+                    if (tokens && isRefreshUsable(tokens) && !error.config._retry) {
                         error.config._retry = true;
                         try {
                             const refreshResponse = await axios.post(
@@ -85,9 +86,15 @@ axios.interceptors.response.use(
                             );
                             if (refreshResponse && refreshResponse.data && refreshResponse.data.data) {
                                 const newTokens = refreshResponse.data.data;
-                                localStorage.setItem("tokens", JSON.stringify(newTokens));
-                                setAuthorization(newTokens.access_token);
-                                error.config.headers['Authorization'] = `Bearer ${newTokens.access_token}`;
+                                const base = Date.now();
+                                const tokensWithExpiry = {
+                                    ...newTokens,
+                                    access_expires_at: base + 10 * 60 * 1000,
+                                    refresh_expires_at: base + 24 * 60 * 60 * 1000,
+                                };
+                                localStorage.setItem("tokens", JSON.stringify(tokensWithExpiry));
+                                setAuthorization(tokensWithExpiry.access_token);
+                                error.config.headers['Authorization'] = `Bearer ${tokensWithExpiry.access_token}`;
                                 return axios.request(error.config);
                             }
                         } catch (refreshError) {
@@ -207,7 +214,6 @@ const getLoggedinUser = () => {
 const getTokens = () => {
     const tokens = localStorage.getItem("tokens");
     if (!tokens) {
-        logoutUser();
         return null;
     } else {
         return JSON.parse(tokens);

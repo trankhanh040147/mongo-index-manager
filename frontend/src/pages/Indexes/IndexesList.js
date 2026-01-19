@@ -12,6 +12,7 @@ import {
     getIndexList as onGetIndexList, updateIndex,
 } from "../../slices/index/thunk";
 import {ToastContainer} from "react-toastify";
+import LoaderComponent from "../../Components/Common/LoaderComponent";
 
 const defaultdate = () => {
     let d = new Date(),
@@ -47,13 +48,16 @@ const IndexesListComponent = ({}) => {
         (indexes) => ({
             indexLists: indexes.indexLists,
             reload: indexes.reload,
+            loading: indexes.loading,
         })
     );
-    const {indexLists, reload} = useSelector(selectDashboardData);
+    const {indexLists, reload, loading} = useSelector(selectDashboardData);
 
     useEffect(() => {
-        dispatch(onGetIndexList({database_id: currentDatabase.id, collection: currentCollection}));
-    }, [dispatch]);
+        if (currentDatabase?.id && currentCollection) {
+            dispatch(onGetIndexList({database_id: currentDatabase.id, collection: currentCollection}));
+        }
+    }, [dispatch, currentDatabase?.id, currentCollection]);
 
     useEffect(() => {
         console.log(indexLists)
@@ -74,9 +78,11 @@ const IndexesListComponent = ({}) => {
         console.log("Updated indexLists", indexLists)
     }, [indexLists])
     useEffect(() => {
-        dispatch(onGetIndexList({database_id: currentDatabase.id, collection: currentCollection}));
-        console.log("Page changed. Current page: " + currentPage)
-    }, [currentPage, reload])
+        if (currentDatabase?.id && currentCollection) {
+            dispatch(onGetIndexList({database_id: currentDatabase.id, collection: currentCollection}));
+            console.log("Page changed. Current page: " + currentPage)
+        }
+    }, [currentPage, reload, currentDatabase?.id, currentCollection])
 
     const toggle = useCallback(() => {
         if (modal) {
@@ -130,6 +136,21 @@ const IndexesListComponent = ({}) => {
     }
 
     const [selectedIndex, setSelectedIndex] = useState({});
+    const [selectedIds, setSelectedIds] = useState([]);
+
+    const onToggleOne = (id) => {
+        setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+    };
+
+    const onToggleAll = () => {
+        const ids = (indexLists?.records || []).map((r) => r.id);
+        setSelectedIds((prev) => (prev.length === ids.length ? [] : ids));
+    };
+
+    const onBulkDelete = () => {
+        selectedIds.forEach((id) => dispatch(deleteIndexList({data: {id}})));
+        setSelectedIds([]);
+    };
 
     const handleCreateOrUpdateIndex = (values, isEdit) => {
         console.log("handleCreateOrUpdateIndex")
@@ -192,9 +213,15 @@ const IndexesListComponent = ({}) => {
                                                     }}
                                                     id="create-btn"><i
                                                 className="ri-add-line align-bottom me-1"></i> Add Index</Button>{" "}
-                                            {/*button: remove multi*/}
-                                            {/*<button className="btn btn-soft-danger"><i className="ri-delete-bin-2-line"></i>*/}
-                                            {/*</button>*/}
+                                            <Button
+                                                color="danger"
+                                                className="ms-2"
+                                                disabled={!selectedIds.length}
+                                                onClick={onBulkDelete}
+                                            >
+                                                <i className="ri-delete-bin-2-line align-bottom me-1"></i>
+                                                Delete Selected
+                                            </Button>
                                         </div>
                                     </Col>
                                     <Col className="col-sm">
@@ -208,10 +235,18 @@ const IndexesListComponent = ({}) => {
                                     </Col>
                                 </Row>
 
-                                <IndexTable
-                                    indexes={indexLists.records} onEdit={handleEdit} onDelete={handleDelete}
-                                    handleEdit={handleEditClick} handleDelete={handleDeleteClick}
-                                />
+                                {loading ? (
+                                    <LoaderComponent/>
+                                ) : (
+                                    <IndexTable
+                                        indexes={indexLists.records || []}
+                                        selectedIds={selectedIds}
+                                        onToggleOne={onToggleOne}
+                                        onToggleAll={onToggleAll}
+                                        handleEdit={handleEditClick}
+                                        handleDelete={handleDeleteClick}
+                                    />
+                                )}
 
                                 {/*Pagination*/}
                                 {/*<div className="d-flex justify-content-end">*/}

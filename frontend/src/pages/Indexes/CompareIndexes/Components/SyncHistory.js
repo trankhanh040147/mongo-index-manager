@@ -10,22 +10,34 @@ const SyncHistoryComponent = ({}) => {
     const dispatch = useDispatch();
 
     const selectSyncState = (state) => state.Syncs;
+    const selectDatabaseState = (state) => state.Databases;
     // selector
     const selectDashboardData = createSelector(
-        [selectSyncState],
-        (syncs) => ({
+        [selectSyncState, selectDatabaseState],
+        (syncs, databases) => ({
             syncData: syncs.syncData,
             reload: syncs.reload,
+            currentDatabase: databases.current,
         })
     );
-    const {syncData, reload} = useSelector(selectDashboardData);
+    const {syncData, reload, currentDatabase} = useSelector(selectDashboardData);
 
     // useEffect(() => {
     //     dispatch(onGetSyncHistory({}));
     // }, [dispatch, reload]);
     useEffect(() => {
-        dispatch(onGetSyncHistory({}))
-    }, [dispatch]);
+        if (currentDatabase?.id) {
+            dispatch(onGetSyncHistory({database_id: currentDatabase.id}))
+        }
+    }, [dispatch, currentDatabase?.id]);
+
+    useEffect(() => {
+        if (!currentDatabase?.id) return;
+        const intervalId = setInterval(() => {
+            dispatch(onGetSyncHistory({database_id: currentDatabase.id}))
+        }, 3000);
+        return () => clearInterval(intervalId);
+    }, [dispatch, currentDatabase?.id]);
     // setInterval(() => {
     //     dispatch(onGetSyncHistory({}))
     // }, 1000)
@@ -61,7 +73,7 @@ const SyncHistoryComponent = ({}) => {
                     </Tooltip>
                 </>
             );
-        } else if (record.completed_tasks === record.total_tasks) {
+        } else if (record.is_finished || record.completed_tasks === record.total_tasks || record.progress === 100) {
             return <FaCheckCircle className="success-icon"/>;
         } else {
             return <FaSync className="syncing-icon"/>;
@@ -88,9 +100,12 @@ const SyncHistoryComponent = ({}) => {
                     syncs.records.map((record, index) => (
                         <tr key={index} className={record.error ? 'error-row' : 'success-row'}>
                             <td className="icon-cell">{getStatusIcon(record, index)}</td>
-                            <td>{record.database_name || ""}</td>
-                            <td>{record.collection_name || ""}</td>
-                            <td>{((record.completed_tasks / record.total_tasks) * 100).toFixed(2)}%</td>
+                            <td>{record.database_name || record.database_id || ""}</td>
+                            <td>{record.collection_name || (Array.isArray(record.collections) ? record.collections.join(", ") : "")}</td>
+                            <td>{(record.progress !== undefined && record.progress !== null)
+                                ? `${record.progress}%`
+                                : (record.total_tasks ? `${((record.completed_tasks / record.total_tasks) * 100).toFixed(2)}%` : "")
+                            }</td>
                             <td className="icon-cell">{record.error ?
                                 <FaExclamationCircle id={`error-${index}`}/> : ""}</td>
                             <td>{new Date(record.created_at).toLocaleString()}</td>

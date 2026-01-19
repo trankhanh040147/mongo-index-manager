@@ -1,10 +1,12 @@
 import React from 'react';
 import {Button, Card, CardBody, Col, Row} from 'reactstrap';
 import {Link, useNavigate} from 'react-router-dom';
+import {useDispatch} from "react-redux";
 import {collectionActions} from "../../../slices/collection/reducer";
 
 const CollectionComponent = ({collectionLists}) => {
     const navigate = useNavigate()
+    const dispatch = useDispatch()
     return (
         <Row>
             {/* boy: check trước nếu collection list rỗng thì return trước nè*/}
@@ -23,7 +25,7 @@ const CollectionComponent = ({collectionLists}) => {
                             </Row>
                             <Button className="float-end"
                                     onClick={() => {
-                                        collectionActions.setCollection(item.collection)
+                                        dispatch(collectionActions.setCollection(item.collection))
                                         navigate("/indexes")
                                     }}
                             >

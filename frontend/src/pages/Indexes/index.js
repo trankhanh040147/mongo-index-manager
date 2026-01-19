@@ -2,11 +2,10 @@ import React, {useEffect, useMemo} from 'react';
 import {Container} from 'reactstrap';
 import IndexesListComponent from "./IndexesList";
 import MyBreadCrumb from "../../Components/Common/MyBreadCrumb";
-import {useSelector} from "react-redux";
+import {useRequireDatabaseAndCollection} from "../../helpers/routeGuards";
 
 const IndexList = () => {
-    let database = useSelector(state => state.Databases.current)
-    let collection = useSelector(state => state.Collections.current)
+    const {currentDatabase: database, currentCollection: collection} = useRequireDatabaseAndCollection();
     const dbName = database?.name ?? '…';
     const collName = collection
     useEffect(() => {
@@ -15,11 +14,11 @@ const IndexList = () => {
     const breadcrumbItems = useMemo(
         () => {
             return [
-                {id: 'db', label: `Databases [${database.name}]`, path: '/databases', active: false},
-                {id: 'coll', label: `Collections [${collection}]`, path: '/collections', active: false},
+                {id: 'db', label: `Databases [${database?.name || '...'}]`, path: '/databases', active: false},
+                {id: 'coll', label: `Collections [${collection || '...'}]`, path: '/collections', active: false},
                 {id: 'index', label: 'Indexes', path: '/indexes', active: true}
             ]
-        }, [database.name]
+        }, [database?.name, collection]
     )
 
     return (

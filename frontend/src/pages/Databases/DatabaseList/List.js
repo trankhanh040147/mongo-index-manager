@@ -29,6 +29,7 @@ import {useFormik} from "formik";
 import MyPagination from "../../../Components/MyPagination";
 import LoaderComponent from "../../../Components/Common/LoaderComponent";
 import {createSync} from "../../../slices/sync/thunk";
+import {syncFromDatabase as onSyncFromDatabase} from "../../../slices/sync/thunk";
 import {OptionSyncBackward, OptionSyncForward} from "../../../common/const";
 import {
     exportIndexes as onExportIndexes,
@@ -183,6 +184,10 @@ const ListTables = () => {
             document.getElementById('fileImport').click()
             setDatabase(database);
         };
+        const onClickSyncFromDatabase = (db) => {
+            dispatch(databaseActions.setDatabaseCurrent(db))
+            dispatch(onSyncFromDatabase({values: {database_id: db.id}}))
+        };
         const onFileChange = (event) => {
             setSelectedFile(event.target.files[0]);
             toggleImport()
@@ -245,6 +250,9 @@ const ListTables = () => {
             onSubmit: (values) => {
                 if (isEdit) {
                     setIsLoading(true)
+                    if (values.test_connection) {
+                        values.is_test_connection = true
+                    }
                     dispatch(updateDatabase(values)).then(() => {
                         validation.resetForm();
                     })
@@ -253,6 +261,7 @@ const ListTables = () => {
                     if (values.test_connection) {
                         console.log("Testing connection")
                         setIsLoading(true)
+                        values.is_test_connection = true
                     }
                     dispatch(createDatabase(values)).then((data) => {
                         console.log("Database created", data)
@@ -461,6 +470,12 @@ const ListTables = () => {
                                                                         className="btn btn-sm btn-success import-btn">
                                                                         <i class="ri-export label-icon align-middle fs-16 me-2"></i>
                                                                         Import
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => onClickSyncFromDatabase(data)}
+                                                                        className="btn btn-sm btn-primary">
+                                                                        <i class="ri-refresh-line label-icon align-middle fs-16 me-2"></i>
+                                                                        Sync from DB
                                                                     </button>
                                                                 </div>
                                                                 <input

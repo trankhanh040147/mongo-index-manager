@@ -34,8 +34,10 @@ const Collections = () => {
     const {collectionLists, reload} = useSelector(selectDashboardData);
 
     useEffect(() => {
-        dispatch(onGetCollectionList({database_id: currentDatabase.id}));
-    }, [dispatch, reload]);
+        if (currentDatabase?.id) {
+            dispatch(onGetCollectionList({database_id: currentDatabase.id}));
+        }
+    }, [dispatch, reload, currentDatabase?.id]);
 
     useEffect(() => {
         const pagination = collectionLists?.extra;
@@ -48,8 +50,10 @@ const Collections = () => {
         }
     }, [collectionLists]);
     useEffect(() => {
-        dispatch(onGetCollectionList({database_id: currentDatabase.id, page: currentPage}));
-    }, [currentPage, reload])
+        if (currentDatabase?.id) {
+            dispatch(onGetCollectionList({database_id: currentDatabase.id, page: currentPage}));
+        }
+    }, [currentPage, reload, currentDatabase?.id])
 
     const toggle = useCallback(() => {
         if (modal) {

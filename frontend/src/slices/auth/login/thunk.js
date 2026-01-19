@@ -11,6 +11,7 @@ import {getProfileUser} from "../profile/thunk";
 import {Navigate} from "react-router-dom";
 import React from "react";
 import {toast} from "react-toastify";
+import {ACCESS_TTL_MS, REFRESH_TTL_MS, computeExpiry, nowMs} from "../../../helpers/jwt-token-access/auth-expiry";
 
 export const loginUser = (user, history) => async (dispatch) => {
     try {
@@ -26,12 +27,18 @@ export const loginUser = (user, history) => async (dispatch) => {
         if (dataResponse) {
             let data = dataResponse.data
             console.log(data)
-            localStorage.setItem("tokens", JSON.stringify(data));
+            const base = nowMs();
+            const tokensWithExpiry = {
+                ...data,
+                access_expires_at: computeExpiry(ACCESS_TTL_MS, base),
+                refresh_expires_at: computeExpiry(REFRESH_TTL_MS, base),
+            };
+            localStorage.setItem("tokens", JSON.stringify(tokensWithExpiry));
 
             // if login success, get profile to update state.user
             dispatch(getProfileUser());
 
-            dispatch(loginSuccess(data));
+            dispatch(loginSuccess(tokensWithExpiry));
             toast.success("Login Successfully", {
                 autoClose: 250,
                 onClose: () => {
@@ -95,9 +102,15 @@ export const refreshToken = () => async (dispatch) => {
 
         if (dataResponse && dataResponse.data) {
             const newTokens = dataResponse.data;
-            localStorage.setItem("tokens", JSON.stringify(newTokens));
-            dispatch(loginSuccess(newTokens));
-            return newTokens;
+            const base = nowMs();
+            const tokensWithExpiry = {
+                ...newTokens,
+                access_expires_at: computeExpiry(ACCESS_TTL_MS, base),
+                refresh_expires_at: computeExpiry(REFRESH_TTL_MS, base),
+            };
+            localStorage.setItem("tokens", JSON.stringify(tokensWithExpiry));
+            dispatch(loginSuccess(tokensWithExpiry));
+            return tokensWithExpiry;
         }
         throw new Error("Failed to refresh token");
     } catch (error) {

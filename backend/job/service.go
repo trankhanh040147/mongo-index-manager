@@ -32,7 +32,6 @@ func handleSyncIndexByCollection(ctx context.Context, t *asynq.Task) error {
 		}
 		return asynq.SkipRetry
 	}
-	// Set status to running at start
 	if err := syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusRunning, 0, ""); err != nil {
 		logger.Error().Err(err).Str("function", "handleSyncIndexByCollection").Str("functionInline", "syncQuery.UpdateStatusById").Msg("job-handler")
 	}
