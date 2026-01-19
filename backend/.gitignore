@@ -117,6 +117,7 @@ gen
 
 # build folder for Air
 tmp
+docs
 
 # cert file
 *.pem
