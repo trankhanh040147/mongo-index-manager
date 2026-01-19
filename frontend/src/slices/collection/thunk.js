@@ -5,7 +5,7 @@ import {
     deleteCollectionListApi, putCollection
 } from "../../helpers/backend_helper";
 
-import {getAccessToken, setAuthorization} from "../../helpers/api_helper";
+import {getAccessToken, setAuthorization, getErrorMessage} from "../../helpers/api_helper";
 import {createAsyncThunk} from "@reduxjs/toolkit";
 import {toast} from "react-toastify";
 import {collectionActions} from "./reducer";
@@ -29,12 +29,10 @@ export const createCollection = createAsyncThunk(
             }
             return data
         } catch (error) {
-            const errorData = error.response?.data;
-            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
-                ? errorData.error 
-                : (errorData?.message || error.message || "Create Collection Failed");
+            const errorMessage = getErrorMessage(error) || "Create Collection Failed";
             toast.error(errorMessage, {autoClose: 3000});
-            thunkAPI.dispatch(collectionActions.postCollectionError(errorMessage))
+            thunkAPI.dispatch(collectionActions.postCollectionError(errorMessage));
+            return thunkAPI.rejectWithValue(errorMessage);
         }
     });
 
@@ -58,20 +56,18 @@ export const updateCollection = createAsyncThunk(
             }
             return data
         } catch (error) {
-            const errorData = error.response?.data;
-            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
-                ? errorData.error 
-                : (errorData?.message || error.message || "Update Collection Failed");
+            const errorMessage = getErrorMessage(error) || "Update Collection Failed";
             toast.error(errorMessage, {autoClose: 3000});
-            thunkAPI.dispatch(collectionActions.postCollectionError(errorMessage))
+            thunkAPI.dispatch(collectionActions.postCollectionError(errorMessage));
+            return thunkAPI.rejectWithValue(errorMessage);
         }
     });
 
-export const getCollectionList = createAsyncThunk("collections/getCollectionList", async (params) => {
+export const getCollectionList = createAsyncThunk("collections/getCollectionList", async (params, thunkAPI) => {
     try {
         setAuthorization(getAccessToken());
         if (!params.limit) {
-            params.limit = 4
+            params.limit = 5
         }
         const response = getCollectionListApi(params);
         const dataResponse = await response
@@ -84,11 +80,12 @@ export const getCollectionList = createAsyncThunk("collections/getCollectionList
         }
         return dataResponse;
     } catch (error) {
-        return error;
+        const errorMessage = getErrorMessage(error) || "Get Collection List Failed";
+        return thunkAPI.rejectWithValue(errorMessage);
     }
 });
 
-export const deleteCollectionList = createAsyncThunk("collections/deleteCollectionList", async (params) => {
+export const deleteCollectionList = createAsyncThunk("collections/deleteCollectionList", async (params, thunkAPI) => {
     try {
         setAuthorization(getAccessToken());
         const response = deleteCollectionListApi(params.id);
@@ -100,12 +97,9 @@ export const deleteCollectionList = createAsyncThunk("collections/deleteCollecti
             throw new Error("Delete failed");
         }
     } catch (error) {
-        const errorData = error.response?.data;
-        const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
-            ? errorData.error 
-            : (errorData?.message || error.message || "Delete Failed");
+        const errorMessage = getErrorMessage(error) || "Delete Failed";
         toast.error(errorMessage, {autoClose: 3000});
-        return error;
+        return thunkAPI.rejectWithValue(errorMessage);
     }
 });
 

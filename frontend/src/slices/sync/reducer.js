@@ -31,13 +31,27 @@ const SyncsSlice = createSlice({
         });
 
         builder.addCase(compareByCollection.fulfilled, (state, action) => {
-            state.compareCollectionData = action.payload
+            const payloadData = action.payload?.data || action.payload;
+            if (Array.isArray(payloadData) && payloadData.length > 0) {
+                state.compareCollectionData = payloadData.length === 1 ? payloadData[0] : payloadData;
+            } else if (payloadData && typeof payloadData === 'object') {
+                state.compareCollectionData = payloadData;
+            } else {
+                state.compareCollectionData = {};
+            }
         });
         builder.addCase(compareByCollection.rejected, (state, action) => {
             state.error = action.payload || null;
         });
         builder.addCase(compareByDatabase.fulfilled, (state, action) => {
-            state.compareDatabaseData = action.payload
+            const payloadData = action.payload?.data || action.payload;
+            if (Array.isArray(payloadData)) {
+                state.compareDatabaseData = payloadData;
+            } else if (payloadData && typeof payloadData === 'object') {
+                state.compareDatabaseData = payloadData;
+            } else {
+                state.compareDatabaseData = {};
+            }
         });
         builder.addCase(compareByDatabase.rejected, (state, action) => {
             state.error = action.payload || null;

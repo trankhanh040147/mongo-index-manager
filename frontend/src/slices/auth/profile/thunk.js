@@ -4,7 +4,7 @@ import {postFakeProfile, getProfile,} from "../../../helpers/backend_helper";
 // action
 import {profileSuccess, profileError, resetProfileFlagChange, getProfileSuccess,} from "./reducer";
 import {apiError} from "../login/reducer";
-import {setAuthorization} from "../../../helpers/api_helper";
+import {setAuthorization, getErrorMessage} from "../../../helpers/api_helper";
 
 
 export const getProfileUser = () => async (dispatch) => {
@@ -22,7 +22,8 @@ export const getProfileUser = () => async (dispatch) => {
         }
 
     } catch (error) {
-        dispatch(apiError(error));
+        const errorMessage = getErrorMessage(error) || "Get Profile Failed";
+        dispatch(apiError(errorMessage));
     }
 }
 
@@ -50,7 +51,8 @@ export const editProfile = (user) => async (dispatch) => {
 
 
     } catch (error) {
-        dispatch(profileError(error));
+        const errorMessage = getErrorMessage(error) || "Update Profile Failed";
+        dispatch(profileError(errorMessage));
     }
 };
 

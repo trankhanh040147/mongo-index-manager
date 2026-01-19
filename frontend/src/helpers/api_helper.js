@@ -15,6 +15,43 @@ const token = JSON.parse(localStorage.getItem("tokens")) ? JSON.parse(localStora
 if (token)
     axios.defaults.headers.common["Authorization"] = "Bearer " + token;
 
+const extractErrorMessage = (errorResponse) => {
+    if (!errorResponse || !errorResponse.data) {
+        return "An unexpected error occurred";
+    }
+
+    const errorData = errorResponse.data;
+    
+    // OpenAPI ErrorResponse format: {status_code, error_code, error}
+    if (errorData.error !== undefined) {
+        if (typeof errorData.error === 'string') {
+            return errorData.error;
+        } else if (typeof errorData.error === 'object') {
+            // Handle validation errors object
+            const errorObj = errorData.error;
+            if (errorObj.detail) {
+                return errorObj.detail;
+            }
+            // Try to extract first error message from object
+            const firstKey = Object.keys(errorObj)[0];
+            if (firstKey && errorObj[firstKey]) {
+                const firstError = Array.isArray(errorObj[firstKey]) 
+                    ? errorObj[firstKey][0] 
+                    : errorObj[firstKey];
+                return `${firstKey}: ${firstError}`;
+            }
+            return JSON.stringify(errorObj);
+        }
+    }
+    
+    // Fallback to message field (for backward compatibility)
+    if (errorData.message) {
+        return errorData.message;
+    }
+    
+    return "An unexpected error occurred";
+};
+
 axios.interceptors.response.use(
     function (response) {
         if (response && response.data) {
@@ -71,17 +108,19 @@ axios.interceptors.response.use(
                     message = "Sorry! the data you are looking for could not be found";
                     break;
                 default:
-                    message = error.message || error;
+                    // Use standardized error extraction
+                    message = extractErrorMessage(error.response) || error.message || "An unexpected error occurred";
             }
+        } else {
+            // Network error or no response
+            message = error.message || "Network error. Please check your connection.";
         }
-        if (error.response && error.response.data) {
-            const errorData = error.response.data;
-            if (errorData.error !== undefined) {
-                message = typeof errorData.error === 'string' ? errorData.error : JSON.stringify(errorData.error);
-            } else if (errorData.message) {
-                message = errorData.message;
-            }
+        
+        // Extract error message from response if not already set
+        if (error.response && !message) {
+            message = extractErrorMessage(error.response);
         }
+        
         toast.error(message, {
             autoClose: 3000,
         });
@@ -180,4 +219,16 @@ const getAccessToken = () => {
     return tokens?.access_token ?? null
 }
 
-export {APIClient, setAuthorization, getLoggedinUser, getTokens, getAccessToken};
+const getErrorMessage = (error) => {
+    if (!error) {
+        return "An unexpected error occurred";
+    }
+    
+    if (error.response && error.response.data) {
+        return extractErrorMessage(error.response);
+    }
+    
+    return error.message || "An unexpected error occurred";
+};
+
+export {APIClient, setAuthorization, getLoggedinUser, getTokens, getAccessToken, getErrorMessage};

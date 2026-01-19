@@ -70,10 +70,10 @@
 - Error: `{status_code, error_code, error}`
 
 **Mismatches Found:**
-- [ ] Response wrapper: FE expects `{data}`, BE returns `{status_code, error_code, data}`
-- [ ] Pagination: FE uses `paging`, BE spec uses `extra`
-- [ ] Error format: FE expects `error.response.data.message`, BE returns `{error}`
-- [ ] Compare response: FE accesses `.result`, not in spec
+- [x] Response wrapper: FE expects `{data}`, BE returns `{status_code, error_code, data}`
+- [x] Pagination: FE uses `paging`, BE spec uses `extra`
+- [x] Error format: FE expects `error.response.data.message`, BE returns `{error}`
+- [x] Compare response: FE accesses `.result`, not in spec
 
 #### TypeScript Response Types
 

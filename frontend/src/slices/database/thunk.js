@@ -11,7 +11,7 @@ import {
     postDatabaseSuccess, setLoading,
 } from "../reducer";
 import {apiError, loginSuccess, logoutUserSuccess} from "../auth/login/reducer";
-import {getAccessToken, setAuthorization} from "../../helpers/api_helper";
+import {getAccessToken, setAuthorization, getErrorMessage} from "../../helpers/api_helper";
 import {createAsyncThunk} from "@reduxjs/toolkit";
 import {toast} from "react-toastify";
 
@@ -39,14 +39,12 @@ export const createDatabase = createAsyncThunk(
             }
             return data
         } catch (error) {
-            const errorData = error.response?.data;
-            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
-                ? errorData.error 
-                : (errorData?.message || error.message || "Create Database Failed");
+            const errorMessage = getErrorMessage(error) || "Create Database Failed";
             toast.error(errorMessage, {autoClose: 3000});
             console.dir("error: ", error);
             console.log("error: ", error);
-            thunkAPI.dispatch(postDatabaseError(errorMessage))
+            thunkAPI.dispatch(postDatabaseError(errorMessage));
+            return thunkAPI.rejectWithValue(errorMessage);
         }
     });
 
@@ -76,18 +74,16 @@ export const updateDatabase = createAsyncThunk(
             }
             return data
         } catch (error) {
-            const errorData = error.response?.data;
-            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
-                ? errorData.error 
-                : (errorData?.message || error.message || "Update Database Failed");
+            const errorMessage = getErrorMessage(error) || "Update Database Failed";
             toast.error(errorMessage, {autoClose: 3000});
             console.dir("error: ", error);
             console.log("error: ", error);
-            thunkAPI.dispatch(postDatabaseError(errorMessage))
+            thunkAPI.dispatch(postDatabaseError(errorMessage));
+            return thunkAPI.rejectWithValue(errorMessage);
         }
     });
 
-export const getDatabaseList = createAsyncThunk("databases/getDatabaseList", async (params) => {
+export const getDatabaseList = createAsyncThunk("databases/getDatabaseList", async (params, thunkAPI) => {
     try {
         setAuthorization(getAccessToken());
 
@@ -103,11 +99,12 @@ export const getDatabaseList = createAsyncThunk("databases/getDatabaseList", asy
         return dataResponse;
 
     } catch (error) {
-        return error;
+        const errorMessage = getErrorMessage(error) || "Get Database List Failed";
+        return thunkAPI.rejectWithValue(errorMessage);
     }
 });
 
-export const getDatabaseById = createAsyncThunk("databases/getDatabaseById", async (id) => {
+export const getDatabaseById = createAsyncThunk("databases/getDatabaseById", async (id, thunkAPI) => {
     try {
         setAuthorization(getAccessToken());
         const response = getDatabase(id);
@@ -117,16 +114,13 @@ export const getDatabaseById = createAsyncThunk("databases/getDatabaseById", asy
         }
         return dataResponse;
     } catch (error) {
-        const errorData = error.response?.data;
-        const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
-            ? errorData.error 
-            : (errorData?.message || error.message || "Get Database Failed");
+        const errorMessage = getErrorMessage(error) || "Get Database Failed";
         toast.error(errorMessage, {autoClose: 3000});
-        return error;
+        return thunkAPI.rejectWithValue(errorMessage);
     }
 });
 
-export const deleteDatabaseList = createAsyncThunk("databases/deleteDatabaseList", async (data) => {
+export const deleteDatabaseList = createAsyncThunk("databases/deleteDatabaseList", async (data, thunkAPI) => {
     try {
         setAuthorization(getAccessToken());
         const response = deleteDatabaseListApi(data.id);
@@ -138,12 +132,9 @@ export const deleteDatabaseList = createAsyncThunk("databases/deleteDatabaseList
             throw new Error("Delete failed");
         }
     } catch (error) {
-        const errorData = error.response?.data;
-        const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
-            ? errorData.error 
-            : (errorData?.message || error.message || "Delete Failed");
+        const errorMessage = getErrorMessage(error) || "Delete Failed";
         toast.error(errorMessage, {autoClose: 3000});
-        return error;
+        return thunkAPI.rejectWithValue(errorMessage);
     }
 });
 

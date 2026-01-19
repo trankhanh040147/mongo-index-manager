@@ -7,7 +7,7 @@ import {
 } from "../../helpers/backend_helper";
 
 import {apiError, loginSuccess} from "../auth/login/reducer";
-import {getAccessToken, setAuthorization} from "../../helpers/api_helper";
+import {getAccessToken, setAuthorization, getErrorMessage} from "../../helpers/api_helper";
 import {createAsyncThunk} from "@reduxjs/toolkit";
 import {toast} from "react-toastify";
 import {CompareByCollectionSuccess, postIndexError, postIndexSuccess} from "./reducer";
@@ -41,12 +41,10 @@ export const createIndex = createAsyncThunk(
             }
             return data
         } catch (error) {
-            const errorData = error.response?.data;
-            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
-                ? errorData.error 
-                : (errorData?.message || error.message || "Create Index Failed");
+            const errorMessage = getErrorMessage(error) || "Create Index Failed";
             console.log("error: ", error);
-            thunkAPI.dispatch(postIndexError(errorMessage))
+            thunkAPI.dispatch(postIndexError(errorMessage));
+            return thunkAPI.rejectWithValue(errorMessage);
         }
     });
 
@@ -78,19 +76,17 @@ export const updateIndex = createAsyncThunk(
             }
             return data
         } catch (error) {
-            const errorData = error.response?.data;
-            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
-                ? errorData.error 
-                : (errorData?.message || error.message || "Update Index Failed");
+            const errorMessage = getErrorMessage(error) || "Update Index Failed";
             toast.error(errorMessage, {autoClose: 3000});
             console.dir("error: ", error);
             console.log("error: ", error);
-            thunkAPI.dispatch(postIndexError(errorMessage))
+            thunkAPI.dispatch(postIndexError(errorMessage));
+            return thunkAPI.rejectWithValue(errorMessage);
         }
     });
 
 export const getIndexList = createAsyncThunk("indexes/getIndexList",
-    async (params) => {
+    async (params, thunkAPI) => {
         try {
             setAuthorization(getAccessToken());
 
@@ -112,12 +108,13 @@ export const getIndexList = createAsyncThunk("indexes/getIndexList",
             return dataResponse;
 
         } catch (error) {
-            return error;
+            const errorMessage = getErrorMessage(error) || "Get Index List Failed";
+            return thunkAPI.rejectWithValue(errorMessage);
         }
     });
 
 export const exportIndexes = createAsyncThunk("indexes/export",
-    async (params) => {
+    async (params, thunkAPI) => {
         try {
             setAuthorization(getAccessToken());
             console.log("database_id: ", params.database_id)
@@ -130,17 +127,14 @@ export const exportIndexes = createAsyncThunk("indexes/export",
                 return dataResponse.data;
             }
         } catch (error) {
-            const errorData = error.response?.data;
-            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
-                ? errorData.error 
-                : (errorData?.message || error.message || "Export Failed");
+            const errorMessage = getErrorMessage(error) || "Export Failed";
             toast.error(errorMessage, {autoClose: 3000});
-            return error;
+            return thunkAPI.rejectWithValue(errorMessage);
         }
     });
 
 export const importIndexes = createAsyncThunk("indexes/import",
-    async (params) => {
+    async (params, thunkAPI) => {
         try {
             setAuthorization(getAccessToken());
             console.log("params: ", params)
@@ -154,12 +148,14 @@ export const importIndexes = createAsyncThunk("indexes/import",
                 return data;
             }
         } catch (error) {
-            return error;
+            const errorMessage = getErrorMessage(error) || "Import Failed";
+            toast.error(errorMessage, {autoClose: 3000});
+            return thunkAPI.rejectWithValue(errorMessage);
         }
     });
 
 
-export const getIndexById = createAsyncThunk("indexes/getIndexById", async (id) => {
+export const getIndexById = createAsyncThunk("indexes/getIndexById", async (id, thunkAPI) => {
     try {
         setAuthorization(getAccessToken());
         const response = getIndex(id);
@@ -169,16 +165,13 @@ export const getIndexById = createAsyncThunk("indexes/getIndexById", async (id) 
         }
         return dataResponse;
     } catch (error) {
-        const errorData = error.response?.data;
-        const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
-            ? errorData.error 
-            : (errorData?.message || error.message || "Get Index Failed");
+        const errorMessage = getErrorMessage(error) || "Get Index Failed";
         toast.error(errorMessage, {autoClose: 3000});
-        return error;
+        return thunkAPI.rejectWithValue(errorMessage);
     }
 });
 
-export const deleteIndexList = createAsyncThunk("indexes/deleteIndexList", async ({data}) => {
+export const deleteIndexList = createAsyncThunk("indexes/deleteIndexList", async ({data}, thunkAPI) => {
     try {
         setAuthorization(getAccessToken());
         const response = deleteIndexListApi(data.id);
@@ -190,12 +183,9 @@ export const deleteIndexList = createAsyncThunk("indexes/deleteIndexList", async
             throw new Error("Delete failed");
         }
     } catch (error) {
-        const errorData = error.response?.data;
-        const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
-            ? errorData.error 
-            : (errorData?.message || error.message || "Delete Failed");
+        const errorMessage = getErrorMessage(error) || "Delete Failed";
         toast.error(errorMessage, {autoClose: 3000});
-        return error;
+        return thunkAPI.rejectWithValue(errorMessage);
     }
 });
 

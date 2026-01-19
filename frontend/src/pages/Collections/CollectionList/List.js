@@ -34,7 +34,7 @@ const Collections = () => {
     const {collectionLists, reload} = useSelector(selectDashboardData);
 
     useEffect(() => {
-        dispatch(onGetCollectionList({id: currentDatabase.id}));
+        dispatch(onGetCollectionList({database_id: currentDatabase.id}));
     }, [dispatch, reload]);
 
     useEffect(() => {
@@ -48,7 +48,7 @@ const Collections = () => {
         }
     }, [collectionLists]);
     useEffect(() => {
-        dispatch(onGetCollectionList({id: currentDatabase.id, page: currentPage}));
+        dispatch(onGetCollectionList({database_id: currentDatabase.id, page: currentPage}));
     }, [currentPage, reload])
 
     const toggle = useCallback(() => {

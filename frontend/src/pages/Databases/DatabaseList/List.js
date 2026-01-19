@@ -170,8 +170,9 @@ const ListTables = () => {
             setDeleteModal(true);
         };
         const onClickViewCollection = (db) => {
+            console.log("database_id" + db.id)
             dispatch(databaseActions.setDatabaseCurrent(db))
-            navigate("/collections/" + db.id)
+            navigate("/collections")
         };
         const onClickExport = (database) => {
             setDatabase(database);
@@ -443,7 +444,7 @@ const ListTables = () => {
                                                                             onClick={() => onClickViewCollection(data)}
                                                                             className="btn btn-sm btn-warning remove-item-btn"
                                                                             data-bs-toggle="modal"
-                                                                            data-bs-target="#removeProjectModal">
+                                                                    >
                                                                         <i class="ri-inbox-unarchive-fill label-icon align-middle fs-16 me-2"></i>
                                                                         View Collections
                                                                     </button>

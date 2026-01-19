@@ -5,7 +5,7 @@ import {
 } from "../../helpers/backend_helper";
 
 import {apiError, loginSuccess} from "../auth/login/reducer";
-import {getAccessToken, setAuthorization} from "../../helpers/api_helper";
+import {getAccessToken, setAuthorization, getErrorMessage} from "../../helpers/api_helper";
 import {createAsyncThunk} from "@reduxjs/toolkit";
 import {toast} from "react-toastify";
 import {CompareByCollectionSuccess, postSyncError, postSyncSuccess} from "./reducer";
@@ -39,17 +39,15 @@ export const createSync = createAsyncThunk(
             }
             return data
         } catch (error) {
-            const errorData = error.response?.data;
-            const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
-                ? errorData.error 
-                : (errorData?.message || error.message || "Create Sync Failed");
+            const errorMessage = getErrorMessage(error) || "Create Sync Failed";
             toast.error(errorMessage, {autoClose: 3000});
             console.log("error: ", error);
-            thunkAPI.dispatch(postSyncError(errorMessage))
+            thunkAPI.dispatch(postSyncError(errorMessage));
+            return thunkAPI.rejectWithValue(errorMessage);
         }
     });
 
-export const getSyncStatusById = createAsyncThunk("syncs/getSyncStatusById", async (syncId) => {
+export const getSyncStatusById = createAsyncThunk("syncs/getSyncStatusById", async (syncId, thunkAPI) => {
     try {
         setAuthorization(getAccessToken());
         const response = getSyncStatus(syncId);
@@ -59,16 +57,13 @@ export const getSyncStatusById = createAsyncThunk("syncs/getSyncStatusById", asy
         }
         return dataResponse;
     } catch (error) {
-        const errorData = error.response?.data;
-        const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
-            ? errorData.error 
-            : (errorData?.message || error.message || "Get Sync Status Failed");
+        const errorMessage = getErrorMessage(error) || "Get Sync Status Failed";
         toast.error(errorMessage, {autoClose: 3000});
-        return error;
+        return thunkAPI.rejectWithValue(errorMessage);
     }
 });
 
-export const getSyncHistory = createAsyncThunk("syncs/getSyncList", async (params) => {
+export const getSyncHistory = createAsyncThunk("syncs/getSyncList", async (params, thunkAPI) => {
     try {
         setAuthorization(getAccessToken());
 
@@ -79,9 +74,11 @@ export const getSyncHistory = createAsyncThunk("syncs/getSyncList", async (param
             console.log(data)
             return data;
         }
+        return dataResponse;
 
     } catch (error) {
-        return error;
+        const errorMessage = getErrorMessage(error) || "Get Sync History Failed";
+        return thunkAPI.rejectWithValue(errorMessage);
     }
 });
 
@@ -93,19 +90,22 @@ export const compareByCollection = createAsyncThunk("indexes/comparing/collectio
 
             response = compareByCollectionAPI(values);
             let resp = await response;
-            // resp is now {status_code, error_code, data} after interceptor
             let data = resp.data
 
             if (data) {
                 console.log(data)
                 thunkAPI.dispatch(CompareByCollectionSuccess(data));
-                // toast.success("Index Created Successfully", {autoClose: 3000});
-                return data
+                return {
+                    data: data,
+                    extra: resp.extra
+                };
             } else {
                 console.log("error: ", resp)
+                throw new Error("Compare response missing data");
             }
         } catch (error) {
-            return error;
+            const errorMessage = getErrorMessage(error) || "Compare by Collection Failed";
+            return thunkAPI.rejectWithValue(errorMessage);
         }
     }
 );
@@ -119,18 +119,22 @@ export const compareByDatabase = createAsyncThunk("indexes/comparing/database",
 
             response = compareByDatabaseAPI(values);
             let resp = await response;
-            // resp is now {status_code, error_code, data} after interceptor
             let data = resp.data
 
             if (data) {
                 console.log(data)
                 thunkAPI.dispatch(CompareByCollectionSuccess(data));
-                return data
+                return {
+                    data: data,
+                    extra: resp.extra
+                };
             } else {
                 console.log("error: ", resp)
+                throw new Error("Compare response missing data");
             }
         } catch (error) {
-            return error;
+            const errorMessage = getErrorMessage(error) || "Compare by Database Failed";
+            return thunkAPI.rejectWithValue(errorMessage);
         }
     }
 );
