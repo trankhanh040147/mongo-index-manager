@@ -7,6 +7,7 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	recoverFiber "github.com/gofiber/fiber/v2/middleware/recover"
 
 	_ "go.uber.org/automaxprocs"
@@ -68,6 +69,12 @@ func addMiddleware(app *fiber.App) {
 		recoverConfig.EnableStackTrace = cfg.Debug
 		app.Use(recoverFiber.New(recoverConfig))
 	}
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     "http://localhost:3000",
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders:     "Origin,Content-Type,Accept,Authorization",
+		AllowCredentials: true,
+	}))
 	app.Use(logging.FiberLoggerMiddleware())
 }
 
