@@ -100,7 +100,6 @@ docker-run: ## Run Docker container
 		--name $(APP_NAME) \
 		-p 8216:8216 \
 		-e MONGODB_MANAGER_URI=$${MONGODB_MANAGER_URI:-mongodb://localhost:27017} \
-		-e REDIS_ADDRESS=$${REDIS_ADDRESS:-redis://127.0.0.1:6379} \
 		$(DOCKER_IMAGE):$(DOCKER_TAG)
 	@echo "$(GREEN)✓ Container running: $(APP_NAME)$(NC)"
 

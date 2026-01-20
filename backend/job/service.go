@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/bytedance/sonic"
-	"github.com/hibiken/asynq"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"doctor-manager-api/common/constants"
 	"doctor-manager-api/database/mongo/models"
 	"doctor-manager-api/database/mongo/queries"
 	"doctor-manager-api/utilities/mongodb"
+	"doctor-manager-api/utilities/taskqueue"
 )
 
 type PayloadSyncIndexByCollections struct {
@@ -22,15 +22,15 @@ type PayloadSyncIndexByCollections struct {
 	SyncId        primitive.ObjectID `json:"sync_id"`
 }
 
-func handleSyncIndexByCollection(ctx context.Context, t *asynq.Task) error {
+func handleSyncIndexByCollection(ctx context.Context, t *taskqueue.Task) error {
 	var payload PayloadSyncIndexByCollections
 	syncQuery := queries.NewSync(ctx)
-	if err := sonic.Unmarshal(t.Payload(), &payload); err != nil {
+	if err := sonic.Unmarshal(t.Payload, &payload); err != nil {
 		logger.Error().Err(err).Str("function", "handleSyncIndexByCollection").Str("functionInline", "sonic.Unmarshal").Interface("payload", payload).Msg("job-handler")
 		if updateErr := syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusFailed, 0, err.Error()); updateErr != nil {
 			logger.Error().Err(updateErr).Str("function", "handleSyncIndexByCollection").Str("functionInline", "syncQuery.UpdateStatusById").Msg("job-handler")
 		}
-		return asynq.SkipRetry
+		return err
 	}
 	if err := syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusRunning, 0, ""); err != nil {
 		logger.Error().Err(err).Str("function", "handleSyncIndexByCollection").Str("functionInline", "syncQuery.UpdateStatusById").Msg("job-handler")
@@ -102,7 +102,7 @@ func handleSyncIndexByCollection(ctx context.Context, t *asynq.Task) error {
 		return err
 	}
 	totalCollections := len(payload.Collections)
-	totalOperations := totalCollections * 2 // Remove and create operations
+	totalOperations := totalCollections * 2 // TODO: Remove and create operations
 	calculateProgress := func(processed, total int) int {
 		if total == 0 {
 			return 100
@@ -115,7 +115,7 @@ func handleSyncIndexByCollection(ctx context.Context, t *asynq.Task) error {
 		if updateErr := syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusFailed, currentProgress, err.Error()); updateErr != nil {
 			logger.Error().Err(updateErr).Str("function", "handleSyncIndexByCollection").Str("functionInline", "syncQuery.UpdateStatusById").Msg("job-handler")
 		}
-		return asynq.SkipRetry
+		return err
 	}
 	currentProgress = calculateProgress(totalCollections, totalOperations)
 	if err = syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusRunning, currentProgress, ""); err != nil {
@@ -126,11 +126,11 @@ func handleSyncIndexByCollection(ctx context.Context, t *asynq.Task) error {
 		if updateErr := syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusFailed, currentProgress, err.Error()); updateErr != nil {
 			logger.Error().Err(updateErr).Str("function", "handleSyncIndexByCollection").Str("functionInline", "syncQuery.UpdateStatusById").Msg("job-handler")
 		}
-		return asynq.SkipRetry
+		return err
 	}
 	if err = syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusCompleted, 100, ""); err != nil {
 		logger.Error().Err(err).Str("function", "handleSyncIndexByCollection").Str("functionInline", "syncQuery.UpdateStatusById").Msg("job-handler")
-		return asynq.SkipRetry
+		return err
 	}
 	return nil
 }

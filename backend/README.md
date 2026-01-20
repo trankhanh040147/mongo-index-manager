@@ -10,7 +10,7 @@
 | HOST                               | 0.0.0.0                   |           |
 | TOKEN_TYPE                         | Bearer                    |           |
 | MONGODB_MANAGER_URI                | mongodb://localhost:27017 |           |
-| MONGODB_MANAGER_NAME               | db_manager                |           |
+| MONGODB_MANAGER_NAME               | db_doctor_manager         |           |
 | PAGINATION_MAX_ITEM                | 50                        |           |
 | MONGODB_REQUEST_TIMEOUT            | 3m                        |           |
 | MONGODB_BULK_WRITE_REQUEST_TIMEOUT | 10m                       |           |
@@ -20,11 +20,6 @@
 | ELASTIC_APM_ENABLE                 | false                     |           |
 | MONGO_AUTO_INDEXING                | false                     |           |
 | JOB_CONCURRENCY                    | 10                        |           |
-| REDIS_ADDRESS                      | redis://127.0.0.1:6379    |           |
-| REDIS_POOL_SIZE                    | 10                        |           |
-| REDIS_DIAL_TIMEOUT                 | 5s                        |           |
-| REDIS_READ_TIMEOUT                 | 3s                        |           |
-| REDIS_WRITE_TIMEOUT                | 3s                        |           |
 
 ### Elastic APM
 

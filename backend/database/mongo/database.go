@@ -36,6 +36,11 @@ func DisconnectDatabase() {
 	_ = managerDBClient.Disconnect(context.Background())
 }
 
+// GetDatabase returns the MongoDB database instance
+func GetDatabase() *mongo.Database {
+	return managerDBClient.Database(cfg.MongoDBManagerName)
+}
+
 func initClientConnection(mongoURI string, enableAPM bool) *mongo.Client {
 	opts := options.Client()
 	opts.ApplyURI(mongoURI)

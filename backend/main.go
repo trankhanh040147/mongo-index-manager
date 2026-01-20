@@ -20,8 +20,8 @@ import (
 	respErr "doctor-manager-api/common/response/error"
 	"doctor-manager-api/database/mongo"
 	"doctor-manager-api/job"
-	jobqueue "doctor-manager-api/utilities/job_queue"
 	"doctor-manager-api/utilities/jwt"
+	taskqueue "doctor-manager-api/utilities/taskqueue"
 )
 
 var cfg = configure.GetConfig()
@@ -52,6 +52,7 @@ func main() {
 	<-sigChan
 	logging.GetLogger().Info().Msg("Shutting down...")
 	_ = app.Shutdown()
+	taskqueue.GetGlobal().Stop()
 	mongo.DisconnectDatabase()
 }
 
@@ -86,15 +87,12 @@ func addV1Route(app *fiber.App) {
 }
 
 func initJobQueue() {
-	serv, err := jobqueue.New(cfg.RedisAddress, jobqueue.Option{
-		DialTimeout:  cfg.RedisDialTimeout,
-		ReadTimeout:  cfg.RedisReadTimeout,
-		WriteTimeout: cfg.RedisWriteTimeout,
-		PoolSize:     cfg.RedisPoolSize,
-		Concurrency:  cfg.JobConcurrency,
+	db := mongo.GetDatabase()
+	serv, err := taskqueue.New(db, taskqueue.Option{
+		Concurrency: cfg.JobConcurrency,
 	})
 	if err != nil {
-		logging.GetLogger().Fatal().Err(err).Str("function", "initJobQueue").Str("functionInline", "jobqueue.New").Msg("main")
+		logging.GetLogger().Fatal().Err(err).Str("function", "initJobQueue").Str("functionInline", "taskqueue.New").Msg("main")
 	}
 	serv.InitGlobal()
 	job.SetupHandler(serv)

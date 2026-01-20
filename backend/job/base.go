@@ -2,14 +2,14 @@ package job
 
 import (
 	"doctor-manager-api/common/logging"
-	jobqueue "doctor-manager-api/utilities/job_queue"
+	"doctor-manager-api/utilities/taskqueue"
 )
 
 var logger = logging.GetLogger()
 
-func SetupHandler(jobQueue jobqueue.Service) {
+func SetupHandler(jobQueue taskqueue.Service) {
 	if jobQueue == nil {
 		return
 	}
-	jobQueue.HandleFunc(jobqueue.TaskTypeSyncIndexByCollection, handleSyncIndexByCollection)
+	jobQueue.HandleFunc(taskqueue.TaskTypeSyncIndexByCollection, handleSyncIndexByCollection)
 }

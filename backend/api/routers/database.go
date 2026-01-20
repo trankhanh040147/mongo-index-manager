@@ -42,5 +42,5 @@ func (r *database) collection() {
 	router := r.router.Group("/collections")
 	router.Use(authMiddleware.AccessToken)
 	router.Post("/list", r.controller.ListCollections)
-	router.Post("/:id/collections", r.controller.CreateCollection)
+	router.Post("/collections", r.controller.CreateCollection)
 }

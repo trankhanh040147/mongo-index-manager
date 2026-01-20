@@ -8,7 +8,6 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v2"
-	"github.com/hibiken/asynq"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"doctor-manager-api/api/serializers"
@@ -20,8 +19,8 @@ import (
 	"doctor-manager-api/database/mongo/models"
 	"doctor-manager-api/database/mongo/queries"
 	"doctor-manager-api/job"
-	jobqueue "doctor-manager-api/utilities/job_queue"
 	"doctor-manager-api/utilities/mongodb"
+	"doctor-manager-api/utilities/taskqueue"
 )
 
 var logger = logging.GetLogger()
@@ -591,7 +590,8 @@ func (ctrl *controller) SyncByCollections(ctx *fiber.Ctx) error {
 		DBName:        database.DBName,
 		SyncId:        sync.Id,
 	})
-	if _, err = jobqueue.GetGlobal().EnqueueTask(asynq.NewTask(jobqueue.TaskTypeSyncIndexByCollection, payloadData)); err != nil {
+	taskQueue := taskqueue.GetGlobal()
+	if _, err = taskQueue.EnqueueTask(taskQueue.NewTask(taskqueue.TaskTypeSyncIndexByCollection, payloadData)); err != nil {
 		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "jobQueue.EnqueueTask").Msg("index-controller")
 		_ = syncQuery.UpdateStatusById(sync.Id, constants.SyncStatusFailed, 0, "Failed to enqueue job")
 		return response.NewError(fiber.StatusInternalServerError)
@@ -817,7 +817,8 @@ func (ctrl *controller) SyncByDatabase(ctx *fiber.Ctx) error {
 		DBName:        database.DBName,
 		SyncId:        sync.Id,
 	})
-	if _, err = jobqueue.GetGlobal().EnqueueTask(asynq.NewTask(jobqueue.TaskTypeSyncIndexByCollection, payloadData)); err != nil {
+	taskQueue := taskqueue.GetGlobal()
+	if _, err = taskQueue.EnqueueTask(taskQueue.NewTask(taskqueue.TaskTypeSyncIndexByCollection, payloadData)); err != nil {
 		logger.Error().Err(err).Str("function", "SyncByDatabase").Str("functionInline", "jobQueue.EnqueueTask").Msg("index-controller")
 		_ = syncQuery.UpdateStatusById(sync.Id, constants.SyncStatusFailed, 0, "Failed to enqueue job")
 		return response.NewError(fiber.StatusInternalServerError)

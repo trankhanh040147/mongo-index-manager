@@ -64,10 +64,13 @@ func (s *service) GetIndexesByDbNameAndCollections(dbName string, collections []
 					isDefaultIndex = true
 					break
 				}
-				index.Keys = append(index.Keys, IndexKey{
+				key := IndexKey{
 					Field: k,
-					Value: v.(int32),
-				})
+				}
+				if value, ok := v.(int32); ok {
+					key.Value = value
+				} // todo: handle text index
+				index.Keys = append(index.Keys, key)
 			}
 			if isDefaultIndex {
 				continue
@@ -194,10 +197,13 @@ func (s *service) GetIndexesByDbName(dbName string) ([]Index, error) {
 					isDefaultIndex = true
 					break
 				}
-				index.Keys = append(index.Keys, IndexKey{
+				key := IndexKey{
 					Field: k,
-					Value: v.(int32),
-				})
+				}
+				if value, ok := v.(int32); ok {
+					key.Value = value
+				}
+				index.Keys = append(index.Keys, key)
 			}
 			if isDefaultIndex {
 				continue
