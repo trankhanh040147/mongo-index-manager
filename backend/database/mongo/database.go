@@ -21,7 +21,7 @@ var (
 )
 
 func InitDatabase() {
-	managerDBClient = initClientConnection(cfg.MongoDBManagerUri, cfg.ElasticAPMEnable)
+	managerDBClient = initClientConnection(cfg.MongoDBDoctorManagerUri, cfg.ElasticAPMEnable)
 	autoIndexing()
 }
 
@@ -38,7 +38,7 @@ func DisconnectDatabase() {
 
 // GetDatabase returns the MongoDB database instance
 func GetDatabase() *mongo.Database {
-	return managerDBClient.Database(cfg.MongoDBManagerName)
+	return managerDBClient.Database(cfg.MongoDBDoctorManagerName)
 }
 
 func initClientConnection(mongoURI string, enableAPM bool) *mongo.Client {

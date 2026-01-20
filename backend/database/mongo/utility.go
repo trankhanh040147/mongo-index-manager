@@ -10,7 +10,6 @@ import (
 
 type UtilityService interface {
 	GetContextTimeout(ctx context.Context) (context.Context, context.CancelFunc)
-	GetBulkWriteContextTimeout(ctx context.Context) (context.Context, context.CancelFunc)
 	GetAccountCollection() (coll *mongo.Collection)
 	GetAuthTokenCollection() (coll *mongo.Collection)
 	GetDatabaseCollection() (coll *mongo.Collection)
@@ -29,12 +28,8 @@ func (s *utilityService) GetContextTimeout(ctx context.Context) (context.Context
 	return context.WithTimeout(ctx, cfg.MongoDBRequestTimeout)
 }
 
-func (s *utilityService) GetBulkWriteContextTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(ctx, cfg.MongoDBBulkWriteRequestTimeout)
-}
-
 func (s *utilityService) getManagerDb() (db *mongo.Database) {
-	return managerDBClient.Database(cfg.MongoDBManagerName)
+	return managerDBClient.Database(cfg.MongoDBDoctorManagerName)
 }
 
 func (s *utilityService) GetAccountCollection() (coll *mongo.Collection) {

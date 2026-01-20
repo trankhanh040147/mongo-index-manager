@@ -2,24 +2,23 @@
 
 ## Environment variable
 
-| Environment                        | Default                   | Separator |
-|------------------------------------|---------------------------|-----------|
-| TOKEN_PUBLIC_KEY_PATH              | certs/public.pem          |           |
-| TOKEN_PRIVATE_KEY_PATH             | certs/private.pem         |           |
-| PORT                               | 8216                      |           |
-| HOST                               | 0.0.0.0                   |           |
-| TOKEN_TYPE                         | Bearer                    |           |
-| MONGODB_MANAGER_URI                | mongodb://localhost:27017 |           |
-| MONGODB_MANAGER_NAME               | db_doctor_manager         |           |
-| PAGINATION_MAX_ITEM                | 50                        |           |
-| MONGODB_REQUEST_TIMEOUT            | 3m                        |           |
-| MONGODB_BULK_WRITE_REQUEST_TIMEOUT | 10m                       |           |
-| ACCESS_TOKEN_TIMEOUT               | 10m                       |           |
-| REFRESH_TOKEN_TIMEOUT              | 24h                       |           |
-| DEBUG                              | false                     |           |
-| ELASTIC_APM_ENABLE                 | false                     |           |
-| MONGO_AUTO_INDEXING                | false                     |           |
-| JOB_CONCURRENCY                    | 10                        |           |
+| Environment                 | Default                   | Separator |
+|-----------------------------|---------------------------|-----------|
+| TOKEN_PUBLIC_KEY_PATH       | certs/public.pem          |           |
+| TOKEN_PRIVATE_KEY_PATH      | certs/private.pem         |           |
+| PORT                        | 8216                      |           |
+| HOST                        | 0.0.0.0                   |           |
+| TOKEN_TYPE                  | Bearer                    |           |
+| MONGODB_DOCTOR_MANAGER_URI  | mongodb://localhost:27017 |           |
+| MONGODB_DOCTOR_MANAGER_NAME | db_doctor_manager         |           |
+| PAGINATION_MAX_ITEM         | 50                        |           |
+| MONGODB_REQUEST_TIMEOUT     | 3m                        |           |
+| ACCESS_TOKEN_TIMEOUT        | 10m                       |           |
+| REFRESH_TOKEN_TIMEOUT       | 24h                       |           |
+| DEBUG                       | false                     |           |
+| ELASTIC_APM_ENABLE          | false                     |           |
+| MONGO_AUTO_INDEXING         | false                     |           |
+| JOB_CONCURRENCY             | 10                        |           |
 
 ### Elastic APM
 
