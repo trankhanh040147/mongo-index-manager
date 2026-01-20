@@ -17,7 +17,10 @@ export const createCollection = createAsyncThunk(
 
         try {
             setAuthorization(getAccessToken());
-            const response = postCollection(databaseID, collection);
+            const response = postCollection({
+                "database_id": databaseID,
+                "collection": collection
+            });
             resp = await response;
             const data = resp.data
             if (data) {
@@ -92,7 +95,7 @@ export const deleteCollectionList = createAsyncThunk("collections/deleteCollecti
         const dataResponse = await response;
         if (dataResponse && dataResponse.status_code >= 200 && dataResponse.status_code < 300) {
             toast.success("Delete Successfully", {autoClose: 3000});
-            return { id: params.id, data: dataResponse.data };
+            return {id: params.id, data: dataResponse.data};
         } else {
             throw new Error("Delete failed");
         }

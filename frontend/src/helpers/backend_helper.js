@@ -393,7 +393,7 @@ export const deleteDatabaseListApi = (id) => {
     return api.delete(`${url.DELETE_DATABASE}/${id}`);
 };
 
-export const postCollection = (id, data) => api.create(url.POST_DATABASE  + id + '/collections', data);
+export const postCollection = (data) => api.create(url.POST_DATABASE + '/collections', data);
 export const putCollection = (data) => api.put(url.PUT_COLLECTION + '/' + data.id, data);
 export const getCollectionListApi = (params) => api.create(url.GET_COLLECTIONS_LIST, params);
 export const getCollections = (data) => api.create(url.GET_COLLECTIONS_LIST, data);

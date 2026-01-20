@@ -30,7 +30,7 @@ const CompareIndexesByCollectionComponent = ({selectedDatabase, selectedCollecti
     const [compareData, setCompareData] = useState({
         missing_indexes: [],
         matched_indexes: [],
-        extra_indexes: []
+        redundant_indexes: []
     });
 
     const selectIndexState = (state) => state.Syncs;
@@ -107,7 +107,7 @@ const CompareIndexesByCollectionComponent = ({selectedDatabase, selectedCollecti
                         {compareData &&
                             renderIndexes(compareData.matched_indexes, "Matched Indexes", "row-matched")}
                         {compareData &&
-                            renderIndexes(compareData.extra_indexes, "Extra Indexes", "row-extra")}
+                            renderIndexes(compareData.redundant_indexes, "Extra Indexes", "row-extra")}
                         </tbody>
                     </Table>
                 </div>
