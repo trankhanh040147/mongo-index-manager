@@ -21,8 +21,18 @@ export const createSync = createAsyncThunk(
             setAuthorization(getAccessToken());
 
             console.log("POST /syncing ", values)
-            if (values.collection_name) {
-                response = postSyncByCollection(values);
+            if (values.collections && Array.isArray(values.collections)) {
+                const syncPayload = {
+                    database_id: values.database_id,
+                    collections: values.collections
+                };
+                if (values.option_missing !== undefined) {
+                    syncPayload.option_missing = values.option_missing;
+                }
+                if (values.option_extra !== undefined) {
+                    syncPayload.option_extra = values.option_extra;
+                }
+                response = postSyncByCollection(syncPayload);
             } else {
                 response = postSyncByDatabase(values)
             }

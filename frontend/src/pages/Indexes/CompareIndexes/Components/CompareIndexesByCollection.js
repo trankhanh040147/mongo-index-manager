@@ -17,7 +17,7 @@ const CompareIndexesByCollectionComponent = ({selectedDatabase, selectedCollecti
                 dispatch(onCompareByCollection({
                     values: {
                         database_id: selectedDatabase.id,
-                        collection_name: selectedCollection.collection
+                        collections: [selectedCollection.collection]
                     }
                 }));
             }

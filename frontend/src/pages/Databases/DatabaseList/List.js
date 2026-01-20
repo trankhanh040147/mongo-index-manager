@@ -238,7 +238,7 @@ const ListTables = () => {
                 db_name: (database && database.db_name) || '',
                 description: (database && database.description) || '',
                 test_connection: (database && database.test_connection) || false,
-                is_sync: false,
+                is_sync_index: false,
             },
 
             validationSchema: Yup.object({
@@ -265,7 +265,7 @@ const ListTables = () => {
                     }
                     dispatch(createDatabase(values)).then((data) => {
                         console.log("Database created", data)
-                        if (values.is_sync && data.payload) {
+                        if (values.is_sync_index && data.payload) {
                             dispatch(createSync({
                                 values: {
                                     database_id: data.payload.id,
@@ -622,11 +622,11 @@ const ListTables = () => {
                                                 htmlFor="formCheck1" className="form-check-label form-label">Test
                                                 Connection</label>
                                             </div>
-                                            <div class="form-check mb-2" id="is_sync">
+                                            <div class="form-check mb-2" id="is_sync_index">
                                                 <input
-                                                    id="is_sync"
-                                                    name="is_sync"
-                                                    value={validation.values.is_sync}
+                                                    id="is_sync_index"
+                                                    name="is_sync_index"
+                                                    value={validation.values.is_sync_index}
                                                     onChange={validation.handleChange}
                                                     type="checkbox"
                                                     className="form-check-input form-check-input"/><label

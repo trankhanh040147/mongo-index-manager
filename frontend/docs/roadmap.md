@@ -185,6 +185,12 @@
 
 - [x] IS1: Refresh `/collections` or `/indexes` can throw `Cannot read properties of null` when required Redux context is missing
 - [x] IS2: Navigating directly to `/compare` shows an empty database list (no databases loaded)
+- [x] IS3: Compare-by-collection request uses `collection_name` instead of `collections: string[]` as per `IndexCompareByCollectionsRequest`, causing `collections: required` validation errors
+- [x] IS4: Sync-by-collections request uses `collection_name` instead of `collections: string[]` as per `IndexSyncByCollectionsRequest`; FE currently only supports a single collection while spec expects an array
+- [x] IS5: Database create request uses `is_sync` instead of `is_sync_index` as per `DatabaseCreateRequest` schema
+- [ ] IS6: Collection creation endpoint doesn't exist - FE calls `POST /databases/{id}/collections` but OpenAPI spec has no endpoint for creating collections (collections are MongoDB entities, not manager entities; they should be discovered via `POST /databases/collections/list`, not created)
+- [ ] IS7: Collection update endpoint doesn't exist - FE calls `PUT /collections/{id}` but OpenAPI spec has no endpoint for updating collections
+- [ ] IS8: Collection delete endpoint doesn't exist - FE calls `DELETE /collections/{id}` but OpenAPI spec has no endpoint for deleting collections
 
 ---
 

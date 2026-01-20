@@ -90,7 +90,7 @@ const CompareIndexesDashboard = () => {
                 dispatch(createSync({
                     values: {
                         database_id: selectedDatabase.id,
-                        collection_name: selectedCollection && selectedCollection.collection,
+                        collections: selectedCollection ? [selectedCollection.collection] : undefined,
                         option_extra: optionExtraIndexes,
                         option_missing: optionMissingIndexes
                     }
