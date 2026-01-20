@@ -98,8 +98,8 @@ type DatabaseListCollectionsResponseItem struct {
 }
 
 type DatabaseCreateCollectionBodyValidate struct {
-	DatabaseId primitive.ObjectID `json:"database_id" validate:"required"`
 	Collection string             `json:"collection" validate:"required"`
+	DatabaseId primitive.ObjectID `json:"database_id" validate:"required"`
 }
 
 func (v *DatabaseCreateCollectionBodyValidate) Validate() error {

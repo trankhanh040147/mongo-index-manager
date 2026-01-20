@@ -14,11 +14,11 @@ import (
 )
 
 type PayloadSyncIndexByCollections struct {
+	Uri           string             `json:"uri"`
+	DBName        string             `json:"db_name"`
 	Collections   []string           `json:"collections"`
 	ClientIndexes []mongodb.Index    `json:"client_indexes"`
 	ServerIndexes []models.Index     `json:"server_indexes"`
-	Uri           string             `json:"uri"`
-	DBName        string             `json:"db_name"`
 	SyncId        primitive.ObjectID `json:"sync_id"`
 }
 
@@ -103,11 +103,12 @@ func handleSyncIndexByCollection(ctx context.Context, t *taskqueue.Task) error {
 	}
 	totalCollections := len(payload.Collections)
 	totalOperations := totalCollections * 2 // TODO: Remove and create operations
+	const maxProgress = 100
 	calculateProgress := func(processed, total int) int {
 		if total == 0 {
-			return 100
+			return maxProgress
 		}
-		return int(float64(processed) / float64(total) * 100)
+		return int(float64(processed) / float64(total) * maxProgress)
 	}
 	currentProgress := 0
 	if err = dbClient.RemoveIndexes(payload.DBName, redundantIndexes); err != nil {
@@ -128,7 +129,7 @@ func handleSyncIndexByCollection(ctx context.Context, t *taskqueue.Task) error {
 		}
 		return err
 	}
-	if err = syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusCompleted, 100, ""); err != nil {
+	if err = syncQuery.UpdateStatusById(payload.SyncId, constants.SyncStatusCompleted, maxProgress, ""); err != nil {
 		logger.Error().Err(err).Str("function", "handleSyncIndexByCollection").Str("functionInline", "syncQuery.UpdateStatusById").Msg("job-handler")
 		return err
 	}

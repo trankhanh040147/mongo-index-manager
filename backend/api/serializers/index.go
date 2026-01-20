@@ -211,28 +211,28 @@ func (v *IndexSyncByCollectionsValidate) Validate() error {
 }
 
 type IndexSyncStatusResponse struct {
-	Id          primitive.ObjectID `json:"id"`
-	DatabaseId  primitive.ObjectID `json:"database_id"`
-	Status      string             `json:"status"`
-	Progress    int                `json:"progress"`
-	Error       string             `json:"error"`
-	Collections []string           `json:"collections"`
-	IsFinished  bool               `json:"is_finished"`
 	StartedAt   time.Time          `json:"started_at"`
-	CompletedAt *time.Time         `json:"completed_at,omitempty"`
 	CreatedAt   time.Time          `json:"created_at"`
 	UpdatedAt   time.Time          `json:"updated_at"`
+	CompletedAt *time.Time         `json:"completed_at,omitempty"`
+	Status      string             `json:"status"`
+	Error       string             `json:"error"`
+	Collections []string           `json:"collections"`
+	Progress    int                `json:"progress"`
+	Id          primitive.ObjectID `json:"id"`
+	DatabaseId  primitive.ObjectID `json:"database_id"`
+	IsFinished  bool               `json:"is_finished"`
 }
 
 type IndexSyncStatusListResponseItem struct {
-	Id          primitive.ObjectID `json:"id"`
-	Status      string             `json:"status"`
-	Progress    int                `json:"progress"`
-	Error       string             `json:"error"`
-	IsFinished  bool               `json:"is_finished"`
 	StartedAt   time.Time          `json:"started_at"`
-	CompletedAt *time.Time         `json:"completed_at,omitempty"`
 	CreatedAt   time.Time          `json:"created_at"`
+	CompletedAt *time.Time         `json:"completed_at,omitempty"`
+	Status      string             `json:"status"`
+	Error       string             `json:"error"`
+	Progress    int                `json:"progress"`
+	Id          primitive.ObjectID `json:"id"`
+	IsFinished  bool               `json:"is_finished"`
 }
 
 type IndexSyncFromDatabaseValidate struct {

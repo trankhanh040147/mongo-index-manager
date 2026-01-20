@@ -7,22 +7,22 @@ import (
 )
 
 type Task struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty"`
-	Type      string             `bson:"type"`
-	Payload   []byte             `bson:"payload"`
-	Status    string             `bson:"status"`
-	LockedAt  *time.Time         `bson:"locked_at,omitempty"`
-	LockedBy  string             `bson:"locked_by,omitempty"`
 	CreatedAt time.Time          `bson:"created_at"`
 	UpdatedAt time.Time          `bson:"updated_at"`
+	LockedAt  *time.Time         `bson:"locked_at,omitempty"`
+	Type      string             `bson:"type"`
+	Status    string             `bson:"status"`
+	LockedBy  string             `bson:"locked_by,omitempty"`
+	Payload   []byte             `bson:"payload"`
+	ID        primitive.ObjectID `bson:"_id,omitempty"`
 }
 
 type TaskInfo struct {
+	CreatedAt time.Time
 	ID        string
 	Type      string
-	Payload   []byte
 	State     string
-	CreatedAt time.Time
+	Payload   []byte
 }
 
 const (

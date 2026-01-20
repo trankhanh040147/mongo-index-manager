@@ -25,13 +25,13 @@ const (
 var logger = logging.GetLogger()
 
 type workerPool struct {
-	collection  *mongo.Collection
-	concurrency int
-	workerID    string
-	handlers    map[string]func(context.Context, *Task) error
-	wg          sync.WaitGroup
 	ctx         context.Context
+	collection  *mongo.Collection
+	handlers    map[string]func(context.Context, *Task) error
 	cancel      context.CancelFunc
+	workerID    string
+	wg          sync.WaitGroup
+	concurrency int
 }
 
 func New(db *mongo.Database, opts ...Option) (Service, error) {
