@@ -96,3 +96,16 @@ type DatabaseListCollectionsResponseItem struct {
 	Collection   string `json:"collection"`
 	TotalIndexes int    `json:"total_indexes"`
 }
+
+type DatabaseCreateCollectionBodyValidate struct {
+	DatabaseId primitive.ObjectID `json:"database_id" validate:"required"`
+	Collection string             `json:"collection" validate:"required"`
+}
+
+func (v *DatabaseCreateCollectionBodyValidate) Validate() error {
+	validateEngine := validator.GetValidateEngine()
+	if err := validateEngine.Struct(v); err != nil {
+		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: validator.ParseValidateError(err)})
+	}
+	return nil
+}

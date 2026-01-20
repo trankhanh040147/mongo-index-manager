@@ -25,6 +25,7 @@ type Controller interface {
 	Update(ctx *fiber.Ctx) error
 	Delete(ctx *fiber.Ctx) error
 	ListCollections(ctx *fiber.Ctx) error
+	CreateCollection(ctx *fiber.Ctx) error
 }
 
 type controller struct {
@@ -342,4 +343,35 @@ func (ctrl *controller) Delete(ctx *fiber.Ctx) error {
 		}
 	}
 	return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
+}
+
+func (ctrl *controller) CreateCollection(ctx *fiber.Ctx) error {
+	var requestBody serializers.DatabaseCreateCollectionBodyValidate
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return response.New(ctx, response.Options{Code: fiber.StatusBadRequest, Data: respErr.ErrFieldWrongType})
+	}
+	if err := requestBody.Validate(); err != nil {
+		return err
+	}
+	queryOption := queries.NewOptions()
+	queryOption.SetOnlyFields("uri", "db_name", "_id")
+	database, err := queries.NewDatabase(ctx.Context()).GetById(requestBody.DatabaseId, queryOption)
+	if err != nil {
+		return err
+	}
+	dbClient, err := mongodb.New(database.Uri)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "CreateCollection").Str("functionInline", "mongodb.New").Msg("database-controller")
+		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot connect to database"})
+	}
+	if err = dbClient.CreateCollection(database.DBName, requestBody.Collection); err != nil {
+		logger.Error().Err(err).Str("function", "CreateCollection").Str("functionInline", "dbClient.CreateCollection").Msg("database-controller")
+		return response.New(ctx, response.Options{Code: fiber.StatusInternalServerError, Data: "Failed to create collection"})
+	}
+	return response.New(ctx, response.Options{
+		Code: fiber.StatusCreated,
+		Data: fiber.Map{
+			"success": true,
+		},
+	})
 }
