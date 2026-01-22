@@ -69,7 +69,11 @@ func (s *service) GetIndexesByDbNameAndCollections(dbName string, collections []
 				}
 				if value, ok := v.(int32); ok {
 					key.Value = value
-				} // todo: handle text index
+				} else if value, ok := v.(string); ok {
+					key.Value = value
+				} else {
+					key.Value = v
+				}
 				index.Keys = append(index.Keys, key)
 			}
 			if isDefaultIndex {
@@ -80,6 +84,39 @@ func (s *service) GetIndexesByDbNameAndCollections(dbName string, collections []
 			}
 			if expires, ok := indexDoc["expireAfterSeconds"].(int32); ok {
 				index.Options.ExpireAfterSeconds = &expires
+			}
+			if collationDoc, ok := indexDoc["collation"].(bson.M); ok {
+				collation := &Collation{}
+				if locale, ok := collationDoc["locale"].(string); ok {
+					collation.Locale = locale
+				}
+				if strength, ok := collationDoc["strength"].(int32); ok {
+					strengthInt := int(strength)
+					collation.Strength = &strengthInt
+				} else if strength, ok := collationDoc["strength"].(int); ok {
+					collation.Strength = &strength
+				}
+				if caseLevel, ok := collationDoc["caseLevel"].(bool); ok {
+					collation.CaseLevel = &caseLevel
+				}
+				if caseFirst, ok := collationDoc["caseFirst"].(string); ok {
+					collation.CaseFirst = caseFirst
+				}
+				if numericOrdering, ok := collationDoc["numericOrdering"].(bool); ok {
+					collation.NumericOrdering = &numericOrdering
+				}
+				if collation.Locale != "" {
+					index.Options.Collation = collation
+				}
+			}
+			if defaultLanguage, ok := indexDoc["default_language"].(string); ok {
+				index.Options.DefaultLanguage = defaultLanguage
+			}
+			if weights, ok := indexDoc["weights"].(bson.M); ok {
+				index.Options.Weights = make(map[string]interface{})
+				for k, v := range weights {
+					index.Options.Weights[k] = v
+				}
 			}
 			if name, ok := indexDoc["name"].(string); ok {
 				index.Name = name
@@ -202,6 +239,10 @@ func (s *service) GetIndexesByDbName(dbName string) ([]Index, error) {
 				}
 				if value, ok := v.(int32); ok {
 					key.Value = value
+				} else if value, ok := v.(string); ok {
+					key.Value = value
+				} else {
+					key.Value = v
 				}
 				index.Keys = append(index.Keys, key)
 			}
@@ -213,6 +254,39 @@ func (s *service) GetIndexesByDbName(dbName string) ([]Index, error) {
 			}
 			if expires, ok := indexDoc["expireAfterSeconds"].(int32); ok {
 				index.Options.ExpireAfterSeconds = &expires
+			}
+			if collationDoc, ok := indexDoc["collation"].(bson.M); ok {
+				collation := &Collation{}
+				if locale, ok := collationDoc["locale"].(string); ok {
+					collation.Locale = locale
+				}
+				if strength, ok := collationDoc["strength"].(int32); ok {
+					strengthInt := int(strength)
+					collation.Strength = &strengthInt
+				} else if strength, ok := collationDoc["strength"].(int); ok {
+					collation.Strength = &strength
+				}
+				if caseLevel, ok := collationDoc["caseLevel"].(bool); ok {
+					collation.CaseLevel = &caseLevel
+				}
+				if caseFirst, ok := collationDoc["caseFirst"].(string); ok {
+					collation.CaseFirst = caseFirst
+				}
+				if numericOrdering, ok := collationDoc["numericOrdering"].(bool); ok {
+					collation.NumericOrdering = &numericOrdering
+				}
+				if collation.Locale != "" {
+					index.Options.Collation = collation
+				}
+			}
+			if defaultLanguage, ok := indexDoc["default_language"].(string); ok {
+				index.Options.DefaultLanguage = defaultLanguage
+			}
+			if weights, ok := indexDoc["weights"].(bson.M); ok {
+				index.Options.Weights = make(map[string]interface{})
+				for k, v := range weights {
+					index.Options.Weights[k] = v
+				}
 			}
 			if name, ok := indexDoc["name"].(string); ok {
 				index.Name = name

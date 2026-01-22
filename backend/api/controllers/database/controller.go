@@ -97,10 +97,23 @@ func (ctrl *controller) Create(ctx *fiber.Ctx) error {
 						Value: key.Value,
 					})
 				}
+				var collation *models.Collation
+				if index.Options.Collation != nil {
+					collation = &models.Collation{
+						Locale:          index.Options.Collation.Locale,
+						Strength:        index.Options.Collation.Strength,
+						CaseLevel:       index.Options.Collation.CaseLevel,
+						CaseFirst:       index.Options.Collation.CaseFirst,
+						NumericOrdering: index.Options.Collation.NumericOrdering,
+					}
+				}
 				indexes = append(indexes, models.Index{
 					Options: models.IndexOption{
 						ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
 						IsUnique:           index.Options.IsUnique,
+						Collation:          collation,
+						DefaultLanguage:    index.Options.DefaultLanguage,
+						Weights:            index.Options.Weights,
 					},
 					Collection:   index.Collection,
 					Name:         index.Name,

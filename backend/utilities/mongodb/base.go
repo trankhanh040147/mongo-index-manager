@@ -3,6 +3,8 @@ package mongodb
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -38,14 +40,25 @@ type Index struct {
 	Keys         []IndexKey  `bson:"keys"`
 }
 
+type Collation struct {
+	Strength        *int   `bson:"strength,omitempty" json:"strength,omitempty"`
+	CaseLevel       *bool  `bson:"case_level,omitempty" json:"case_level,omitempty"`
+	NumericOrdering *bool  `bson:"numeric_ordering,omitempty" json:"numeric_ordering,omitempty"`
+	Locale          string `bson:"locale" json:"locale"`
+	CaseFirst       string `bson:"case_first,omitempty" json:"case_first,omitempty"`
+}
+
 type IndexOption struct {
-	ExpireAfterSeconds *int32 `bson:"expire_after_seconds"`
-	IsUnique           bool   `bson:"is_unique"`
+	ExpireAfterSeconds *int32                 `bson:"expire_after_seconds"`
+	Collation          *Collation             `bson:"collation,omitempty"`
+	Weights            map[string]interface{} `bson:"weights,omitempty"`
+	DefaultLanguage    string                 `bson:"default_language,omitempty"`
+	IsUnique           bool                   `bson:"is_unique"`
 }
 
 type IndexKey struct {
-	Field string `bson:"field"`
-	Value int32  `bson:"value"`
+	Value interface{} `bson:"value"`
+	Field string      `bson:"field"`
 }
 
 func (m *Index) GetKeySignature() string {
@@ -53,8 +66,37 @@ func (m *Index) GetKeySignature() string {
 		return ""
 	}
 	var keyString string
-	for _, key := range m.Keys {
-		keyString += fmt.Sprintf("%s_%d_", key.Field, key.Value)
+	hasTextIndex := false
+	keys := m.Keys
+	slices.SortFunc(m.Keys, func(keyFirst, keySecond IndexKey) int {
+		return strings.Compare(keyFirst.Field, keySecond.Field)
+	})
+	for _, key := range keys {
+		switch v := key.Value.(type) {
+		case int32:
+			keyString += fmt.Sprintf("%s_%d_", key.Field, v)
+		case string:
+			if v == "text" {
+				keyString += fmt.Sprintf("%s_text_", key.Field)
+				hasTextIndex = true
+			} else {
+				keyString += fmt.Sprintf("%s_%s_", key.Field, v)
+			}
+		default:
+			keyString += fmt.Sprintf("%s_%v_", key.Field, v)
+		}
+	}
+	if hasTextIndex {
+		keyString += "text_"
+		if m.Options.DefaultLanguage != "" {
+			keyString += fmt.Sprintf("default_language_%s_", m.Options.DefaultLanguage)
+		}
+	}
+	if m.Options.Collation != nil && m.Options.Collation.Locale != "" {
+		keyString += fmt.Sprintf("collation_locale_%s_", m.Options.Collation.Locale)
+		if m.Options.Collation.Strength != nil {
+			keyString += fmt.Sprintf("strength_%d_", *m.Options.Collation.Strength)
+		}
 	}
 	if m.Options.IsUnique {
 		keyString += "unique_"
@@ -79,6 +121,30 @@ func (m *Index) toIndexModel() mongo.IndexModel {
 	}
 	if m.Options.IsUnique {
 		result.Options.SetUnique(m.Options.IsUnique)
+	}
+	if m.Options.Collation != nil && m.Options.Collation.Locale != "" {
+		collation := options.Collation{
+			Locale: m.Options.Collation.Locale,
+		}
+		if m.Options.Collation.Strength != nil {
+			collation.Strength = *m.Options.Collation.Strength
+		}
+		if m.Options.Collation.CaseLevel != nil {
+			collation.CaseLevel = *m.Options.Collation.CaseLevel
+		}
+		if m.Options.Collation.CaseFirst != "" {
+			collation.CaseFirst = m.Options.Collation.CaseFirst
+		}
+		if m.Options.Collation.NumericOrdering != nil {
+			collation.NumericOrdering = *m.Options.Collation.NumericOrdering
+		}
+		result.Options.SetCollation(&collation)
+	}
+	if m.Options.DefaultLanguage != "" {
+		result.Options.SetDefaultLanguage(m.Options.DefaultLanguage)
+	}
+	if m.Options.Weights != nil && len(m.Options.Weights) > 0 {
+		result.Options.SetWeights(m.Options.Weights)
 	}
 	return result
 }

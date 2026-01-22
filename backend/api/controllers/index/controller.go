@@ -60,10 +60,23 @@ func (ctrl *controller) Create(ctx *fiber.Ctx) error {
 	if _, err := queries.NewDatabase(ctx.Context()).GetById(requestBody.DatabaseId, queryOption); err != nil {
 		return err
 	}
+	var collation *models.Collation
+	if requestBody.Options.Collation != nil {
+		collation = &models.Collation{
+			Locale:          requestBody.Options.Collation.Locale,
+			Strength:        requestBody.Options.Collation.Strength,
+			CaseLevel:       requestBody.Options.Collation.CaseLevel,
+			CaseFirst:       requestBody.Options.Collation.CaseFirst,
+			NumericOrdering: requestBody.Options.Collation.NumericOrdering,
+		}
+	}
 	index := &models.Index{
 		Options: models.IndexOption{
 			ExpireAfterSeconds: requestBody.Options.ExpireAfterSeconds,
 			IsUnique:           requestBody.Options.IsUnique,
+			Collation:          collation,
+			DefaultLanguage:    requestBody.Options.DefaultLanguage,
+			Weights:            requestBody.Options.Weights,
 		},
 		Collection: requestBody.Collection,
 		Name:       requestBody.Name,
@@ -73,7 +86,22 @@ func (ctrl *controller) Create(ctx *fiber.Ctx) error {
 	keyFields := make([]string, len(index.Keys))
 	for i, key := range requestBody.Keys {
 		index.Keys[i].Field = key.Field
-		index.Keys[i].Value = key.Value
+		switch v := key.Value.(type) {
+		case float64:
+			if v == 1 || v == -1 {
+				index.Keys[i].Value = int32(v)
+			} else {
+				index.Keys[i].Value = key.Value
+			}
+		case int:
+			if v == 1 || v == -1 {
+				index.Keys[i].Value = int32(v)
+			} else {
+				index.Keys[i].Value = key.Value
+			}
+		default:
+			index.Keys[i].Value = key.Value
+		}
 		keyFields[i] = key.Field
 	}
 	index.KeySignature = index.GetKeySignature()
@@ -123,12 +151,25 @@ func (ctrl *controller) Get(ctx *fiber.Ctx) error {
 		keys[i].Field = key.Field
 		keys[i].Value = key.Value
 	}
+	var collationResp *serializers.CollationGetResponse
+	if index.Options.Collation != nil {
+		collationResp = &serializers.CollationGetResponse{
+			Locale:          index.Options.Collation.Locale,
+			Strength:        index.Options.Collation.Strength,
+			CaseLevel:       index.Options.Collation.CaseLevel,
+			CaseFirst:       index.Options.Collation.CaseFirst,
+			NumericOrdering: index.Options.Collation.NumericOrdering,
+		}
+	}
 	return response.New(ctx, response.Options{Data: serializers.IndexGetResponse{
 		CreatedAt: index.CreatedAt,
 		UpdatedAt: index.UpdatedAt,
 		Options: serializers.IndexGetResponseOption{
 			ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
 			IsUnique:           index.Options.IsUnique,
+			Collation:          collationResp,
+			DefaultLanguage:    index.Options.DefaultLanguage,
+			Weights:            index.Options.Weights,
 		},
 		Collection:   index.Collection,
 		Name:         index.Name,
@@ -176,12 +217,25 @@ func (ctrl *controller) ListByCollection(ctx *fiber.Ctx) error {
 				keys[i].Field = key.Field
 				keys[i].Value = key.Value
 			}
+			var collationResp *serializers.CollationGetResponse
+			if index.Options.Collation != nil {
+				collationResp = &serializers.CollationGetResponse{
+					Locale:          index.Options.Collation.Locale,
+					Strength:        index.Options.Collation.Strength,
+					CaseLevel:       index.Options.Collation.CaseLevel,
+					CaseFirst:       index.Options.Collation.CaseFirst,
+					NumericOrdering: index.Options.Collation.NumericOrdering,
+				}
+			}
 			return response.NewArrayWithPagination(ctx, []serializers.IndexListByCollectionResponseItem{{
 				CreatedAt: index.CreatedAt,
 				UpdatedAt: index.UpdatedAt,
 				Options: serializers.IndexListByCollectionResponseOption{
 					ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
 					IsUnique:           index.Options.IsUnique,
+					Collation:          collationResp,
+					DefaultLanguage:    index.Options.DefaultLanguage,
+					Weights:            index.Options.Weights,
 				},
 				Collection:   index.Collection,
 				Name:         index.Name,
@@ -218,10 +272,23 @@ func (ctrl *controller) ListByCollection(ctx *fiber.Ctx) error {
 			keys[idx].Field = key.Field
 			keys[idx].Value = key.Value
 		}
+		var collationResp *serializers.CollationGetResponse
+		if index.Options.Collation != nil {
+			collationResp = &serializers.CollationGetResponse{
+				Locale:          index.Options.Collation.Locale,
+				Strength:        index.Options.Collation.Strength,
+				CaseLevel:       index.Options.Collation.CaseLevel,
+				CaseFirst:       index.Options.Collation.CaseFirst,
+				NumericOrdering: index.Options.Collation.NumericOrdering,
+			}
+		}
 		result[i].CreatedAt = index.CreatedAt
 		result[i].UpdatedAt = index.UpdatedAt
 		result[i].Options.IsUnique = index.Options.IsUnique
 		result[i].Options.ExpireAfterSeconds = index.Options.ExpireAfterSeconds
+		result[i].Options.Collation = collationResp
+		result[i].Options.DefaultLanguage = index.Options.DefaultLanguage
+		result[i].Options.Weights = index.Options.Weights
 		result[i].Collection = index.Collection
 		result[i].Name = index.Name
 		result[i].KeySignature = index.KeySignature
@@ -252,11 +319,24 @@ func (ctrl *controller) Update(ctx *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	var collation *models.Collation
+	if requestBody.Options.Collation != nil {
+		collation = &models.Collation{
+			Locale:          requestBody.Options.Collation.Locale,
+			Strength:        requestBody.Options.Collation.Strength,
+			CaseLevel:       requestBody.Options.Collation.CaseLevel,
+			CaseFirst:       requestBody.Options.Collation.CaseFirst,
+			NumericOrdering: requestBody.Options.Collation.NumericOrdering,
+		}
+	}
 	indexUpdate := models.Index{
 		Name: requestBody.Name,
 		Options: models.IndexOption{
 			ExpireAfterSeconds: requestBody.Options.ExpireAfterSeconds,
 			IsUnique:           requestBody.Options.IsUnique,
+			Collation:          collation,
+			DefaultLanguage:    requestBody.Options.DefaultLanguage,
+			Weights:            requestBody.Options.Weights,
 		},
 		Keys: make([]models.IndexKey, len(requestBody.Keys)),
 	}
@@ -268,7 +348,22 @@ func (ctrl *controller) Update(ctx *fiber.Ctx) error {
 	}
 	for i, key := range requestBody.Keys {
 		indexUpdate.Keys[i].Field = key.Field
-		indexUpdate.Keys[i].Value = key.Value
+		switch v := key.Value.(type) {
+		case float64:
+			if v == 1 || v == -1 {
+				indexUpdate.Keys[i].Value = int32(v)
+			} else {
+				indexUpdate.Keys[i].Value = key.Value
+			}
+		case int:
+			if v == 1 || v == -1 {
+				indexUpdate.Keys[i].Value = int32(v)
+			} else {
+				indexUpdate.Keys[i].Value = key.Value
+			}
+		default:
+			indexUpdate.Keys[i].Value = key.Value
+		}
 		listKeyFieldsUpdate[i] = key.Field
 		if _, exists := mapKeyField[key.Field]; !exists {
 			isSameKeyFields = false
@@ -387,10 +482,23 @@ func (ctrl *controller) CompareByCollections(ctx *fiber.Ctx) error {
 				keys[i].Field = key.Field
 				keys[i].Value = key.Value
 			}
+			var collationResp *serializers.CollationGetResponse
+			if index.Options.Collation != nil {
+				collationResp = &serializers.CollationGetResponse{
+					Locale:          index.Options.Collation.Locale,
+					Strength:        index.Options.Collation.Strength,
+					CaseLevel:       index.Options.Collation.CaseLevel,
+					CaseFirst:       index.Options.Collation.CaseFirst,
+					NumericOrdering: index.Options.Collation.NumericOrdering,
+				}
+			}
 			indexItem := serializers.IndexCompareByCollectionsIndex{
 				Options: serializers.IndexCompareByCollectionsIndexOption{
 					ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
 					IsUnique:           index.Options.IsUnique,
+					Collation:          collationResp,
+					DefaultLanguage:    index.Options.DefaultLanguage,
+					Weights:            index.Options.Weights,
 				},
 				Name: index.Name,
 				Keys: keys,
@@ -408,10 +516,23 @@ func (ctrl *controller) CompareByCollections(ctx *fiber.Ctx) error {
 				keys[i].Field = key.Field
 				keys[i].Value = key.Value
 			}
+			var collationResp *serializers.CollationGetResponse
+			if index.Options.Collation != nil {
+				collationResp = &serializers.CollationGetResponse{
+					Locale:          index.Options.Collation.Locale,
+					Strength:        index.Options.Collation.Strength,
+					CaseLevel:       index.Options.Collation.CaseLevel,
+					CaseFirst:       index.Options.Collation.CaseFirst,
+					NumericOrdering: index.Options.Collation.NumericOrdering,
+				}
+			}
 			compareItem.RedundantIndexes = append(compareItem.RedundantIndexes, serializers.IndexCompareByCollectionsIndex{
 				Options: serializers.IndexCompareByCollectionsIndexOption{
 					ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
 					IsUnique:           index.Options.IsUnique,
+					Collation:          collationResp,
+					DefaultLanguage:    index.Options.DefaultLanguage,
+					Weights:            index.Options.Weights,
 				},
 				Name: index.Name,
 				Keys: keys,
@@ -487,10 +608,23 @@ func (ctrl *controller) CompareByDatabase(ctx *fiber.Ctx) error {
 				keys[i].Field = key.Field
 				keys[i].Value = key.Value
 			}
+			var collationResp *serializers.CollationGetResponse
+			if index.Options.Collation != nil {
+				collationResp = &serializers.CollationGetResponse{
+					Locale:          index.Options.Collation.Locale,
+					Strength:        index.Options.Collation.Strength,
+					CaseLevel:       index.Options.Collation.CaseLevel,
+					CaseFirst:       index.Options.Collation.CaseFirst,
+					NumericOrdering: index.Options.Collation.NumericOrdering,
+				}
+			}
 			indexItem := serializers.IndexCompareByDatabaseIndex{
 				Options: serializers.IndexCompareByDatabaseIndexOption{
 					ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
 					IsUnique:           index.Options.IsUnique,
+					Collation:          collationResp,
+					DefaultLanguage:    index.Options.DefaultLanguage,
+					Weights:            index.Options.Weights,
 				},
 				Name: index.Name,
 				Keys: keys,
@@ -508,10 +642,23 @@ func (ctrl *controller) CompareByDatabase(ctx *fiber.Ctx) error {
 				keys[i].Field = key.Field
 				keys[i].Value = key.Value
 			}
+			var collationResp *serializers.CollationGetResponse
+			if index.Options.Collation != nil {
+				collationResp = &serializers.CollationGetResponse{
+					Locale:          index.Options.Collation.Locale,
+					Strength:        index.Options.Collation.Strength,
+					CaseLevel:       index.Options.Collation.CaseLevel,
+					CaseFirst:       index.Options.Collation.CaseFirst,
+					NumericOrdering: index.Options.Collation.NumericOrdering,
+				}
+			}
 			compareItem.RedundantIndexes = append(compareItem.RedundantIndexes, serializers.IndexCompareByDatabaseIndex{
 				Options: serializers.IndexCompareByDatabaseIndexOption{
 					ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
 					IsUnique:           index.Options.IsUnique,
+					Collation:          collationResp,
+					DefaultLanguage:    index.Options.DefaultLanguage,
+					Weights:            index.Options.Weights,
 				},
 				Name: index.Name,
 				Keys: keys,
@@ -702,10 +849,23 @@ func (ctrl *controller) SyncFromDatabase(ctx *fiber.Ctx) error {
 				Value: key.Value,
 			}
 		}
+		var collation *models.Collation
+		if clientIndex.Options.Collation != nil {
+			collation = &models.Collation{
+				Locale:          clientIndex.Options.Collation.Locale,
+				Strength:        clientIndex.Options.Collation.Strength,
+				CaseLevel:       clientIndex.Options.Collation.CaseLevel,
+				CaseFirst:       clientIndex.Options.Collation.CaseFirst,
+				NumericOrdering: clientIndex.Options.Collation.NumericOrdering,
+			}
+		}
 		indexModel := models.Index{
 			Options: models.IndexOption{
 				ExpireAfterSeconds: clientIndex.Options.ExpireAfterSeconds,
 				IsUnique:           clientIndex.Options.IsUnique,
+				Collation:          collation,
+				DefaultLanguage:    clientIndex.Options.DefaultLanguage,
+				Weights:            clientIndex.Options.Weights,
 			},
 			Collection: clientIndex.Collection,
 			Name:       clientIndex.Name,

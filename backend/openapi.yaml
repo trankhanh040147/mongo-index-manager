@@ -534,6 +534,38 @@ components:
               items:
                 $ref: '#/components/schemas/DatabaseCollectionItem'
 
+    DatabaseCreateCollectionRequest:
+      type: object
+      properties:
+        database_id:
+          $ref: '#/components/schemas/ObjectID'
+        collection:
+          type: string
+          description: Collection name to create
+      required:
+        - database_id
+        - collection
+
+    DatabaseCreateCollectionResponse:
+      type: object
+      properties:
+        status_code:
+          type: integer
+          example: 201
+        error_code:
+          type: integer
+          example: 0
+        data:
+          type: object
+          properties:
+            success:
+              type: boolean
+              example: true
+      required:
+        - status_code
+        - error_code
+        - data
+
     # Index Schemas
     IndexKey:
       type: object
@@ -549,6 +581,31 @@ components:
         - field
         - value
 
+    Collation:
+      type: object
+      properties:
+        locale:
+          type: string
+          description: Collation locale (e.g., "en", "fr")
+        strength:
+          type: integer
+          nullable: true
+          description: Collation strength (1-5)
+        case_level:
+          type: boolean
+          nullable: true
+          description: Whether to use case-level comparison
+        case_first:
+          type: string
+          nullable: true
+          description: Case first ordering ("upper" or "lower")
+        numeric_ordering:
+          type: boolean
+          nullable: true
+          description: Whether to use numeric ordering
+      required:
+        - locale
+
     IndexOption:
       type: object
       properties:
@@ -561,6 +618,19 @@ components:
           type: boolean
           default: false
           description: Whether the index is unique
+        collation:
+          $ref: '#/components/schemas/Collation'
+          nullable: true
+          description: Collation options for the index
+        default_language:
+          type: string
+          nullable: true
+          description: Default language for text indexes
+        weights:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: Field weights for text indexes
 
     IndexCreateRequest:
       type: object
@@ -1304,6 +1374,39 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /databases/collections/:
+    post:
+      tags:
+        - Database
+      summary: Create a collection
+      description: Create a new MongoDB collection in the specified database
+      operationId: createCollection
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatabaseCreateCollectionRequest'
+      responses:
+        '201':
+          description: Collection created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseCreateCollectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   # Index Endpoints
   /indexes/:

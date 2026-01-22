@@ -18,14 +18,25 @@ type IndexCreateBodyValidate struct {
 	DatabaseId primitive.ObjectID `json:"database_id" validate:"required"`
 }
 
+type CollationCreateOption struct {
+	Strength        *int   `json:"strength,omitempty"`
+	CaseLevel       *bool  `json:"case_level,omitempty"`
+	NumericOrdering *bool  `json:"numeric_ordering,omitempty"`
+	Locale          string `json:"locale" validate:"required"`
+	CaseFirst       string `json:"case_first,omitempty"`
+}
+
 type IndexCreateOption struct {
-	ExpireAfterSeconds *int32 `json:"expire_after_seconds" validate:"omitempty,gte=0"`
-	IsUnique           bool   `json:"is_unique" validate:"omitempty"`
+	ExpireAfterSeconds *int32                 `json:"expire_after_seconds" validate:"omitempty,gte=0"`
+	Collation          *CollationCreateOption `json:"collation,omitempty"`
+	Weights            map[string]interface{} `json:"weights,omitempty"`
+	DefaultLanguage    string                 `json:"default_language,omitempty"`
+	IsUnique           bool                   `json:"is_unique" validate:"omitempty"`
 }
 
 type IndexCreateKey struct {
-	Field string `json:"field" validate:"required,ne=_id"`
-	Value int32  `json:"value" validate:"required,oneof=1 -1"`
+	Value interface{} `json:"value" validate:"required"`
+	Field string      `json:"field" validate:"required,ne=_id"`
 }
 
 func (v *IndexCreateBodyValidate) Validate() error {
@@ -35,6 +46,37 @@ func (v *IndexCreateBodyValidate) Validate() error {
 	}
 	if v.Options.ExpireAfterSeconds != nil && len(v.Keys) > 1 {
 		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"keys": "ttl_compound"}})
+	}
+	hasTextIndex := false
+	for _, key := range v.Keys {
+		switch val := key.Value.(type) {
+		case float64:
+			if val != 1 && val != -1 {
+				return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"keys": "value must be 1, -1, or \"text\""}})
+			}
+		case int32:
+			if val != 1 && val != -1 {
+				return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"keys": "value must be 1, -1, or \"text\""}})
+			}
+		case int:
+			if val != 1 && val != -1 {
+				return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"keys": "value must be 1, -1, or \"text\""}})
+			}
+		case string:
+			if val == "text" {
+				hasTextIndex = true
+			} else {
+				return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"keys": "value must be 1, -1, or \"text\""}})
+			}
+		default:
+			return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"keys": "value must be 1, -1, or \"text\""}})
+		}
+	}
+	if hasTextIndex && v.Options.Collation != nil {
+		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"options": "text indexes cannot have collation"}})
+	}
+	if v.Options.Collation != nil && v.Options.Collation.Locale == "" {
+		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"options.collation": "locale is required"}})
 	}
 	return nil
 }
@@ -51,14 +93,25 @@ type IndexGetResponse struct {
 	DatabaseId   primitive.ObjectID     `json:"database_id"`
 }
 
+type CollationGetResponse struct {
+	Strength        *int   `json:"strength,omitempty"`
+	CaseLevel       *bool  `json:"case_level,omitempty"`
+	NumericOrdering *bool  `json:"numeric_ordering,omitempty"`
+	Locale          string `json:"locale"`
+	CaseFirst       string `json:"case_first,omitempty"`
+}
+
 type IndexGetResponseOption struct {
-	ExpireAfterSeconds *int32 `json:"expire_after_seconds"`
-	IsUnique           bool   `json:"is_unique"`
+	ExpireAfterSeconds *int32                 `json:"expire_after_seconds"`
+	Collation          *CollationGetResponse  `json:"collation,omitempty"`
+	Weights            map[string]interface{} `json:"weights,omitempty"`
+	DefaultLanguage    string                 `json:"default_language,omitempty"`
+	IsUnique           bool                   `json:"is_unique"`
 }
 
 type IndexGetResponseKey struct {
-	Field string `json:"field"`
-	Value int32  `json:"value"`
+	Value interface{} `json:"value"`
+	Field string      `json:"field"`
 }
 
 type IndexListByCollectionBodyValidate struct {
@@ -90,13 +143,16 @@ type IndexListByCollectionResponseItem struct {
 }
 
 type IndexListByCollectionResponseOption struct {
-	ExpireAfterSeconds *int32 `json:"expire_after_seconds"`
-	IsUnique           bool   `json:"is_unique"`
+	ExpireAfterSeconds *int32                 `json:"expire_after_seconds"`
+	Collation          *CollationGetResponse  `json:"collation,omitempty"`
+	Weights            map[string]interface{} `json:"weights,omitempty"`
+	DefaultLanguage    string                 `json:"default_language,omitempty"`
+	IsUnique           bool                   `json:"is_unique"`
 }
 
 type IndexListByCollectionResponseKey struct {
-	Field string `json:"field"`
-	Value int32  `json:"value"`
+	Value interface{} `json:"value"`
+	Field string      `json:"field"`
 }
 
 type IndexUpdateBodyValidate struct {
@@ -106,13 +162,16 @@ type IndexUpdateBodyValidate struct {
 }
 
 type IndexUpdateOption struct {
-	ExpireAfterSeconds *int32 `json:"expire_after_seconds" validate:"omitempty,gte=0"`
-	IsUnique           bool   `json:"is_unique" validate:"omitempty"`
+	ExpireAfterSeconds *int32                 `json:"expire_after_seconds" validate:"omitempty,gte=0"`
+	Collation          *CollationCreateOption `json:"collation,omitempty"`
+	Weights            map[string]interface{} `json:"weights,omitempty"`
+	DefaultLanguage    string                 `json:"default_language,omitempty"`
+	IsUnique           bool                   `json:"is_unique" validate:"omitempty"`
 }
 
 type IndexUpdateKey struct {
-	Field string `json:"field" validate:"required,ne=_id"`
-	Value int32  `json:"value" validate:"required,oneof=1 -1"`
+	Value interface{} `json:"value" validate:"required"`
+	Field string      `json:"field" validate:"required,ne=_id"`
 }
 
 func (v *IndexUpdateBodyValidate) Validate() error {
@@ -122,6 +181,37 @@ func (v *IndexUpdateBodyValidate) Validate() error {
 	}
 	if v.Options.ExpireAfterSeconds != nil && len(v.Keys) > 1 {
 		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"keys": "ttl_compound"}})
+	}
+	hasTextIndex := false
+	for _, key := range v.Keys {
+		switch val := key.Value.(type) {
+		case float64:
+			if val != 1 && val != -1 {
+				return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"keys": "value must be 1, -1, or \"text\""}})
+			}
+		case int32:
+			if val != 1 && val != -1 {
+				return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"keys": "value must be 1, -1, or \"text\""}})
+			}
+		case int:
+			if val != 1 && val != -1 {
+				return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"keys": "value must be 1, -1, or \"text\""}})
+			}
+		case string:
+			if val == "text" {
+				hasTextIndex = true
+			} else {
+				return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"keys": "value must be 1, -1, or \"text\""}})
+			}
+		default:
+			return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"keys": "value must be 1, -1, or \"text\""}})
+		}
+	}
+	if hasTextIndex && v.Options.Collation != nil {
+		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"options": "text indexes cannot have collation"}})
+	}
+	if v.Options.Collation != nil && v.Options.Collation.Locale == "" {
+		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"options.collation": "locale is required"}})
 	}
 	return nil
 }
@@ -153,13 +243,16 @@ type IndexCompareByCollectionsIndex struct {
 }
 
 type IndexCompareByCollectionsIndexOption struct {
-	ExpireAfterSeconds *int32 `json:"expire_after_seconds"`
-	IsUnique           bool   `json:"is_unique"`
+	ExpireAfterSeconds *int32                 `json:"expire_after_seconds"`
+	Collation          *CollationGetResponse  `json:"collation,omitempty"`
+	Weights            map[string]interface{} `json:"weights,omitempty"`
+	DefaultLanguage    string                 `json:"default_language,omitempty"`
+	IsUnique           bool                   `json:"is_unique"`
 }
 
 type IndexCompareByCollectionsIndexKey struct {
-	Field string `json:"field"`
-	Value int32  `json:"value"`
+	Value interface{} `json:"value"`
+	Field string      `json:"field"`
 }
 
 type IndexCompareByDatabaseValidate struct {
@@ -188,13 +281,16 @@ type IndexCompareByDatabaseIndex struct {
 }
 
 type IndexCompareByDatabaseIndexOption struct {
-	ExpireAfterSeconds *int32 `json:"expire_after_seconds"`
-	IsUnique           bool   `json:"is_unique"`
+	ExpireAfterSeconds *int32                 `json:"expire_after_seconds"`
+	Collation          *CollationGetResponse  `json:"collation,omitempty"`
+	Weights            map[string]interface{} `json:"weights,omitempty"`
+	DefaultLanguage    string                 `json:"default_language,omitempty"`
+	IsUnique           bool                   `json:"is_unique"`
 }
 
 type IndexCompareByDatabaseIndexKey struct {
-	Field string `json:"field"`
-	Value int32  `json:"value"`
+	Value interface{} `json:"value"`
+	Field string      `json:"field"`
 }
 
 type IndexSyncByCollectionsValidate struct {

@@ -61,11 +61,24 @@ func handleSyncIndexByCollection(ctx context.Context, t *taskqueue.Task) error {
 				keys[i].Field = key.Field
 				keys[i].Value = key.Value
 			}
+			var collation *mongodb.Collation
+			if index.Options.Collation != nil {
+				collation = &mongodb.Collation{
+					Locale:          index.Options.Collation.Locale,
+					Strength:        index.Options.Collation.Strength,
+					CaseLevel:       index.Options.Collation.CaseLevel,
+					CaseFirst:       index.Options.Collation.CaseFirst,
+					NumericOrdering: index.Options.Collation.NumericOrdering,
+				}
+			}
 			indexItem := mongodb.Index{
 				Collection: collection,
 				Options: mongodb.IndexOption{
 					ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
 					IsUnique:           index.Options.IsUnique,
+					Collation:          collation,
+					DefaultLanguage:    index.Options.DefaultLanguage,
+					Weights:            index.Options.Weights,
 				},
 				Name: index.Name,
 				Keys: keys,
@@ -82,11 +95,24 @@ func handleSyncIndexByCollection(ctx context.Context, t *taskqueue.Task) error {
 				keys[i].Field = key.Field
 				keys[i].Value = key.Value
 			}
+			var collation *mongodb.Collation
+			if index.Options.Collation != nil {
+				collation = &mongodb.Collation{
+					Locale:          index.Options.Collation.Locale,
+					Strength:        index.Options.Collation.Strength,
+					CaseLevel:       index.Options.Collation.CaseLevel,
+					CaseFirst:       index.Options.Collation.CaseFirst,
+					NumericOrdering: index.Options.Collation.NumericOrdering,
+				}
+			}
 			redundantIndexes = append(redundantIndexes, mongodb.Index{
 				Collection: collection,
 				Options: mongodb.IndexOption{
 					ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
 					IsUnique:           index.Options.IsUnique,
+					Collation:          collation,
+					DefaultLanguage:    index.Options.DefaultLanguage,
+					Weights:            index.Options.Weights,
 				},
 				Name: index.Name,
 				Keys: keys,
