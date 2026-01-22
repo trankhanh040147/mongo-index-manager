@@ -74,25 +74,32 @@ const CompareIndexesByDatabaseComponent = ({selectedDatabase, selectedCollection
     return (
         <>
             {compareData
-                && compareData.length > 0 && compareData.map((value, index) => (
-                    <div className="mt-4" key={index}>
-                        <h2>{value.collection_name}</h2>
-                        <Table bordered>
-                            <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Keys</th>
-                                <th>Options</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {renderIndexes(value.missing_indexes, "Missing Indexes", "row-missing")}
-                            {renderIndexes(value.matched_indexes, "Matched Indexes", "row-matched")}
-                            {renderIndexes(value.extra_indexes, "Extra Indexes", "row-extra")}
-                            </tbody>
-                        </Table>
-                    </div>
-                ))}
+                && compareData.length > 0 && compareData.map((value, index) => {
+                    const collectionName = value.collection || value.collection_name || "Unknown Collection";
+                    const missingIndexes = value.missing_indexes || [];
+                    const matchedIndexes = value.matched_indexes || [];
+                    const extraIndexes = value.redundant_indexes || value.extra_indexes || [];
+
+                    return (
+                        <div className="mt-4" key={index}>
+                            <h2>{collectionName}</h2>
+                            <Table bordered>
+                                <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Keys</th>
+                                    <th>Options</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {renderIndexes(missingIndexes, "Missing Indexes", "row-missing")}
+                                {renderIndexes(matchedIndexes, "Matched Indexes", "row-matched")}
+                                {renderIndexes(extraIndexes, "Extra Indexes", "row-extra")}
+                                </tbody>
+                            </Table>
+                        </div>
+                    );
+                })}
         </>
     );
 };

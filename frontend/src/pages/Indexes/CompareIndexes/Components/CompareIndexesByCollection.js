@@ -27,11 +27,7 @@ const CompareIndexesByCollectionComponent = ({selectedDatabase, selectedCollecti
     }, [dispatch, activeTab]);
 
 
-    const [compareData, setCompareData] = useState({
-        missing_indexes: [],
-        matched_indexes: [],
-        redundant_indexes: []
-    });
+    const [compareData, setCompareData] = useState([]);
 
     const selectIndexState = (state) => state.Syncs;
 
@@ -45,7 +41,13 @@ const CompareIndexesByCollectionComponent = ({selectedDatabase, selectedCollecti
     const {compareCollectionData, reload} = useSelector(selectDashboardData);
     useEffect(() => {
         console.log(compareCollectionData)
-        setCompareData(compareCollectionData);
+        if (Array.isArray(compareCollectionData)) {
+            setCompareData(compareCollectionData);
+        } else if (compareCollectionData && typeof compareCollectionData === "object") {
+            setCompareData([compareCollectionData]);
+        } else {
+            setCompareData([]);
+        }
     }, [compareCollectionData]);
 
     const renderValueLabel = (value) => {
@@ -90,27 +92,33 @@ const CompareIndexesByCollectionComponent = ({selectedDatabase, selectedCollecti
 
     return (
         <>
-            {selectedDatabase && selectedCollection &&
-                <div className="mt-4">
-                    <h2>{selectedCollection.collection}</h2>
-                    <Table bordered>
-                        <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Keys</th>
-                            <th>Options</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {compareData &&
-                            renderIndexes(compareData.missing_indexes, "Missing Indexes", "row-missing")}
-                        {compareData &&
-                            renderIndexes(compareData.matched_indexes, "Matched Indexes", "row-matched")}
-                        {compareData &&
-                            renderIndexes(compareData.redundant_indexes, "Extra Indexes", "row-extra")}
-                        </tbody>
-                    </Table>
-                </div>
+            {selectedDatabase && compareData && compareData.length > 0 &&
+                compareData.map((result, idx) => {
+                    const collectionName = result.collection || result.collection_name || selectedCollection?.collection || "Unknown Collection";
+                    const missingIndexes = result.missing_indexes || [];
+                    const matchedIndexes = result.matched_indexes || [];
+                    const extraIndexes = result.redundant_indexes || result.extra_indexes || [];
+
+                    return (
+                        <div className="mt-4" key={idx}>
+                            <h2>{collectionName}</h2>
+                            <Table bordered>
+                                <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Keys</th>
+                                    <th>Options</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {renderIndexes(missingIndexes, "Missing Indexes", "row-missing")}
+                                {renderIndexes(matchedIndexes, "Matched Indexes", "row-matched")}
+                                {renderIndexes(extraIndexes, "Extra Indexes", "row-extra")}
+                                </tbody>
+                            </Table>
+                        </div>
+                    );
+                })
             }
         </>
     )

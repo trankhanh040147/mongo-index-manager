@@ -194,7 +194,115 @@
 
 ---
 
-## v0.3.0 - Missing from Backend
+## v0.3.0 - Text Index And Collation Support
+
+### A. Enhanced Index Options Support
+
+#### Collation Support
+- [ ] Add collation fields to index form (`src/pages/Indexes/NewIndex.js`):
+  - `locale` (required if collation enabled): Text input with common locale suggestions (en, fr, de, etc.)
+  - `strength` (optional): Number input (1-5) with validation
+  - `case_level` (optional): Boolean checkbox
+  - `case_first` (optional): Select dropdown ("upper", "lower", or empty)
+  - `numeric_ordering` (optional): Boolean checkbox
+- [ ] Update form validation schema to include collation fields
+- [ ] Update form initial values to load collation from existing index (`index?.options?.collation`)
+- [ ] Update index thunk (`src/slices/index/thunk.js`) to include collation object in options when provided
+- [ ] Add collation display in index table (`src/pages/Indexes/IndexTable.js`) - show locale badge or "None"
+
+#### Text Index Support (default_language, weights)
+- [ ] Add text index fields to index form:
+  - `default_language` (optional): Text input for language code (e.g., "english", "french")
+  - `weights` (optional): Key-value pair input for field weights (object with field names and numeric weights)
+- [ ] Update form validation schema for text index fields
+- [ ] Update form initial values to load text index options from existing index (`index?.options?.default_language`, `index?.options?.weights`)
+- [ ] Update index thunk to include `default_language` and `weights` in options when provided
+- [ ] Add text index info display in index table (show language badge or weights summary)
+
+#### Form UX Improvements
+- [ ] Add collapsible section for "Advanced Options" in index form (collation and text index options)
+- [ ] Add validation: text indexes cannot have collation (MongoDB constraint)
+- [ ] Add help text/tooltips explaining collation and text index options
+- [ ] Consider adding an "Index Type" selector (regular vs text) to show/hide relevant fields
+
+### B. Collection Management
+
+#### Verify Collection Creation
+- [x] Collection creation endpoint already matches spec (`POST /databases/collections/`)
+- [x] Collection creation UI already exists (`src/pages/Collections/CollectionList/NewCollection.js`)
+- [ ] Verify collection creation request format matches `DatabaseCreateCollectionRequest` schema
+  - Request should have: `{database_id: ObjectID, collection: string}`
+- [ ] Test collection creation with backend v0.3.0
+
+### C. Display Enhancements
+
+#### Index Table Updates
+- [ ] Add collation column or badge in index table (show locale if present, "None" if not)
+- [ ] Add text index indicators (show language badge or weights summary if present)
+- [ ] Update index detail view (if exists) to show all collation and text index options
+
+#### Index List/Display
+- [ ] Ensure index list response handling includes new option fields (collation, default_language, weights)
+- [ ] Update any index comparison displays to show collation differences
+- [ ] Update sync status displays if they show index details
+
+### D. Backend Integration
+
+#### API Request Updates
+- [ ] Update `createIndex` thunk (`src/slices/index/thunk.js`) to send full options object:
+  ```javascript
+  options: {
+    is_unique: boolean,
+    expire_after_seconds: number | null,
+    collation: { 
+      locale: string, 
+      strength?: number, 
+      case_level?: boolean, 
+      case_first?: string, 
+      numeric_ordering?: boolean 
+    } | null,
+    default_language: string | null,
+    weights: object | null
+  }
+  ```
+- [ ] Update `updateIndex` thunk similarly
+- [ ] Ensure options object structure matches `IndexOption` schema from OpenAPI spec
+
+#### Response Handling
+- [ ] Verify index list/get responses include new option fields (collation, default_language, weights)
+- [ ] Update TypeScript types (if applicable) or add JSDoc comments for new fields
+- [ ] Test backward compatibility (existing indexes without new fields should still work)
+
+### E. Testing & Validation
+
+- [ ] Test index creation with all collation options (locale, strength, case_level, case_first, numeric_ordering)
+- [ ] Test index creation with text index options (default_language, weights)
+- [ ] Test validation: text indexes cannot have collation (MongoDB constraint)
+- [ ] Test index update with new options
+- [ ] Test index display with new options in table and detail views
+- [ ] Test backward compatibility with existing indexes (without new fields)
+- [ ] Verify collection creation still works with backend v0.3.0
+
+### F. Documentation
+
+- [ ] Update component documentation for new index form fields
+- [ ] Add user-facing help text for collation and text index options
+- [ ] Document MongoDB constraints (text indexes cannot have collation)
+
+### Notes
+
+- All new fields are optional (backward compatible)
+- Collation and text index options are mutually exclusive (MongoDB constraint)
+- Collection creation endpoint already implemented correctly (`POST /databases/collections/`)
+- Key signature improvements are backend-only (no FE changes needed)
+- Backend v0.3.0 adds:
+  - `Collation` schema component
+  - Enhanced `IndexOption` schema with collation, default_language, weights
+  - `POST /databases/collections/` endpoint (already used by FE)
+
+---
+
+## v0.4.0 - Missing from Backend
 
 ### Sync Options
 - [ ] Sync options support (`option_missing`, `option_extra`) in sync endpoints
@@ -217,7 +325,7 @@
 
 ---
 
-## v0.4.0 - Deferred Frontend & Backend Implementation
+## v0.5.0 - Deferred Frontend & Backend Implementation
 
 ### Deferred from v0.2.0 B (Frontend)
 

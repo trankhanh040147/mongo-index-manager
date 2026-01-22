@@ -229,17 +229,19 @@ export const GET_APPLICATION_LIST = "/application-list";
 export const GET_API_KEY = "/api-key";
 
 // -------------------------
+// Database
 export const GET_DATABASE = "/databases";
 export const GET_DATABASES_LIST = "/databases/list";
 export const DELETE_DATABASE = "/databases";
 export const POST_DATABASE = "/databases/";
 export const PUT_DATABASE = "/databases";
-export const GET_COLLECTIONS_LIST = "/databases/collections/list";
 
-export const GET_COLLECTIONS = "/collections";
-export const DELETE_COLLECTION = "/collections";
-export const POST_COLLECTION = "/collections";
-export const PUT_COLLECTION = "/collections";
+// Collections (database id passed in request body)
+export const GET_COLLECTIONS_LIST = "/databases/collections/list";
+export const GET_COLLECTIONS = "/databases/collections";
+export const DELETE_COLLECTION = "/databases/collections";
+export const POST_COLLECTION = "/databases/collections";
+export const PUT_COLLECTION = "/databases/collections";
 
 export const URL_INDEX = "/indexes/";
 export const GET_INDEX = "/indexes";
