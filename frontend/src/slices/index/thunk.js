@@ -23,10 +23,59 @@ export const createIndex = createAsyncThunk(
             setAuthorization(getAccessToken());
 
             console.log("POST /indexes ", values)
-            values.options = {
+            
+            // Build options object
+            const options = {
                 is_unique: values.unique,
-                expire_after_seconds: values.expireAfterSeconds,
+                expire_after_seconds: values.expireAfterSeconds || null,
+            };
+
+            // Default to regular if indexType is not set (backward compatibility)
+            const indexType = values.indexType || 'regular';
+
+            // Add collation if index type is regular and collation is enabled
+            if (indexType === 'regular' && values.collationEnabled) {
+                options.collation = {
+                    locale: values.collationLocale,
+                };
+                if (values.collationStrength !== null && values.collationStrength !== undefined) {
+                    options.collation.strength = values.collationStrength;
+                }
+                if (values.collationCaseLevel) {
+                    options.collation.case_level = values.collationCaseLevel;
+                }
+                if (values.collationCaseFirst) {
+                    options.collation.case_first = values.collationCaseFirst;
+                }
+                if (values.collationNumericOrdering) {
+                    options.collation.numeric_ordering = values.collationNumericOrdering;
+                }
+            } else {
+                options.collation = null;
             }
+
+            // Add text index options if index type is text
+            if (indexType === 'text') {
+                if (values.defaultLanguage) {
+                    options.default_language = values.defaultLanguage;
+                } else {
+                    options.default_language = null;
+                }
+                if (values.weights && values.weights.trim() !== '') {
+                    try {
+                        options.weights = JSON.parse(values.weights);
+                    } catch (e) {
+                        throw new Error('Invalid weights JSON format');
+                    }
+                } else {
+                    options.weights = null;
+                }
+            } else {
+                options.default_language = null;
+                options.weights = null;
+            }
+
+            values.options = options;
             response = postIndex(values);
 
             resp = await response;
@@ -58,10 +107,59 @@ export const updateIndex = createAsyncThunk(
 
             setAuthorization(getAccessToken());
             console.log("POST /indexes ", values)
-            values.options = {
+            
+            // Build options object
+            const options = {
                 is_unique: values.unique,
-                expire_after_seconds: values.expireAfterSeconds,
+                expire_after_seconds: values.expireAfterSeconds || null,
+            };
+
+            // Default to regular if indexType is not set (backward compatibility)
+            const indexType = values.indexType || 'regular';
+
+            // Add collation if index type is regular and collation is enabled
+            if (indexType === 'regular' && values.collationEnabled) {
+                options.collation = {
+                    locale: values.collationLocale,
+                };
+                if (values.collationStrength !== null && values.collationStrength !== undefined) {
+                    options.collation.strength = values.collationStrength;
+                }
+                if (values.collationCaseLevel) {
+                    options.collation.case_level = values.collationCaseLevel;
+                }
+                if (values.collationCaseFirst) {
+                    options.collation.case_first = values.collationCaseFirst;
+                }
+                if (values.collationNumericOrdering) {
+                    options.collation.numeric_ordering = values.collationNumericOrdering;
+                }
+            } else {
+                options.collation = null;
             }
+
+            // Add text index options if index type is text
+            if (indexType === 'text') {
+                if (values.defaultLanguage) {
+                    options.default_language = values.defaultLanguage;
+                } else {
+                    options.default_language = null;
+                }
+                if (values.weights && values.weights.trim() !== '') {
+                    try {
+                        options.weights = JSON.parse(values.weights);
+                    } catch (e) {
+                        throw new Error('Invalid weights JSON format');
+                    }
+                } else {
+                    options.weights = null;
+                }
+            } else {
+                options.default_language = null;
+                options.weights = null;
+            }
+
+            values.options = options;
             response = putIndex(values);
 
             resp = await response;

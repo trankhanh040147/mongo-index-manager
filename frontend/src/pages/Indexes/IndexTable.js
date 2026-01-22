@@ -37,6 +37,8 @@ const IndexTable = ({indexes, selectedIds, onToggleOne, onToggleAll, handleEdit,
                     <th className="sort" data-sort="keys">Keys</th>
                     <th className="sort" data-sort="is_unique">Is Unique</th>
                     <th className="sort" data-sort="expire_after_seconds">Expired After (s)</th>
+                    <th className="sort" data-sort="collation">Collation</th>
+                    <th className="sort" data-sort="text_index">Text Index</th>
                     <th className="sort" data-sort="created_date">Created Date</th>
                     <th className="sort" data-sort="action">Action</th>
                 </tr>
@@ -74,6 +76,33 @@ const IndexTable = ({indexes, selectedIds, onToggleOne, onToggleAll, handleEdit,
                         </td>
                         <td className="expire_after_seconds">
                             {index.options.expire_after_seconds || ''}
+                        </td>
+                        <td className="collation">
+                            {index.options.collation?.locale ? (
+                                <span className="badge bg-info-subtle text-info">
+                                    {index.options.collation.locale}
+                                </span>
+                            ) : (
+                                <span className="text-muted">-</span>
+                            )}
+                        </td>
+                        <td className="text_index">
+                            {index.options.default_language || index.options.weights ? (
+                                <div>
+                                    {index.options.default_language && (
+                                        <span className="badge bg-primary-subtle text-primary me-1">
+                                            {index.options.default_language}
+                                        </span>
+                                    )}
+                                    {index.options.weights && (
+                                        <span className="badge bg-secondary-subtle text-secondary" title={JSON.stringify(index.options.weights)}>
+                                            {Object.keys(index.options.weights).length} weight{Object.keys(index.options.weights).length !== 1 ? 's' : ''}
+                                        </span>
+                                    )}
+                                </div>
+                            ) : (
+                                <span className="text-muted">-</span>
+                            )}
                         </td>
                         <td className="created_date">
                             {new Date(index.created_at).toLocaleDateString()}

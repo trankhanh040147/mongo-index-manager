@@ -43,6 +43,48 @@ const CompareIndexesByDatabaseComponent = ({selectedDatabase, selectedCollection
         }
     };
 
+    const renderOptions = (options) => {
+        if (!options) return <span className="text-muted">-</span>;
+        
+        return (
+            <div className="d-flex flex-column gap-1">
+                <div>
+                    <span className={`badge ${options.is_unique ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'} text-uppercase`}>
+                        {options.is_unique ? 'Unique' : 'Not Unique'}
+                    </span>
+                </div>
+                {options.expire_after_seconds && (
+                    <div>
+                        <small className="text-muted">TTL: </small>
+                        <span>{options.expire_after_seconds}s</span>
+                    </div>
+                )}
+                {options.collation?.locale && (
+                    <div>
+                        <small className="text-muted">Collation: </small>
+                        <span className="badge bg-info-subtle text-info">
+                            {options.collation.locale}
+                        </span>
+                    </div>
+                )}
+                {(options.default_language || options.weights) && (
+                    <div>
+                        {options.default_language && (
+                            <span className="badge bg-primary-subtle text-primary me-1">
+                                {options.default_language}
+                            </span>
+                        )}
+                        {options.weights && (
+                            <span className="badge bg-secondary-subtle text-secondary" title={JSON.stringify(options.weights)}>
+                                {Object.keys(options.weights).length} weight{Object.keys(options.weights).length !== 1 ? 's' : ''}
+                            </span>
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     const renderIndexes = (indexes, title, groupClass) => (
         <>
             <tr>
@@ -60,7 +102,7 @@ const CompareIndexesByDatabaseComponent = ({selectedDatabase, selectedCollection
                                 </div>
                             ))}
                         </td>
-                        <td>{JSON.stringify(index.options)}</td>
+                        <td>{renderOptions(index.options)}</td>
                     </tr>
                 ))
             ) : (
