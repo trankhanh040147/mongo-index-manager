@@ -104,6 +104,7 @@ func (ctrl *controller) Create(ctx *fiber.Ctx) error {
 		}
 		keyFields[i] = key.Field
 	}
+	index.IsText = models.IsTextIndex(index.Keys)
 	index.KeySignature = index.GetKeySignature()
 	if index.Name == "" {
 		index.Name = index.KeySignature
@@ -372,6 +373,7 @@ func (ctrl *controller) Update(ctx *fiber.Ctx) error {
 	if index.Name == requestBody.Name && reflect.DeepEqual(index.Options, indexUpdate.Options) && slices.Equal(index.Keys, indexUpdate.Keys) {
 		return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
 	}
+	indexUpdate.IsText = models.IsTextIndex(indexUpdate.Keys)
 	indexUpdate.KeySignature = indexUpdate.GetKeySignature()
 	if indexUpdate.Name == "" {
 		indexUpdate.Name = indexUpdate.KeySignature
@@ -457,6 +459,7 @@ func (ctrl *controller) CompareByCollections(ctx *fiber.Ctx) error {
 		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot connect to database"})
 	}
 	clientIndexes, err := dbClient.GetIndexesByDbNameAndCollections(database.DBName, requestBody.Collections)
+
 	if err != nil {
 		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "dbClient.GetIndexesByDbNameAndCollections").Msg("index-controller")
 		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot get indexes from database"})
@@ -872,6 +875,7 @@ func (ctrl *controller) SyncFromDatabase(ctx *fiber.Ctx) error {
 			Keys:       keys,
 			DatabaseId: requestBody.DatabaseId,
 		}
+		indexModel.IsText = clientIndex.IsText
 		indexModel.KeySignature = indexModel.GetKeySignature()
 		if indexModel.Name == "" {
 			indexModel.Name = indexModel.KeySignature

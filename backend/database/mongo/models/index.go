@@ -15,6 +15,7 @@ type Index struct {
 	Name         string             `bson:"name"`
 	KeySignature string             `bson:"key_signature"`
 	Keys         []IndexKey         `bson:"keys"`
+	IsText       bool               `bson:"is_text"`
 	DatabaseId   primitive.ObjectID `bson:"database_id"`
 	Id           primitive.ObjectID `bson:"_id,omitempty"`
 }
@@ -40,31 +41,47 @@ type IndexKey struct {
 	Field string      `bson:"field"`
 }
 
+func IsTextIndex(keys []IndexKey) bool {
+	for _, key := range keys {
+		if v, ok := key.Value.(string); ok && v == "text" {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *Index) GetKeySignature() string {
 	if len(m.Keys) == 0 {
 		return ""
 	}
 	var keyString string
-	hasTextIndex := false
-	for _, key := range m.Keys {
-		switch v := key.Value.(type) {
-		case int32:
-			keyString += fmt.Sprintf("%s_%d_", key.Field, v)
-		case string:
-			if v == "text" {
-				keyString += fmt.Sprintf("%s_text_", key.Field)
-				hasTextIndex = true
-			} else {
-				keyString += fmt.Sprintf("%s_%s_", key.Field, v)
+	if !m.IsText {
+		for _, key := range m.Keys {
+			if key.Field == "_fts" || key.Field == "_ftsx" {
+				continue
 			}
-		default:
-			keyString += fmt.Sprintf("%s_%v_", key.Field, v)
+			switch v := key.Value.(type) {
+			case int32:
+				keyString += fmt.Sprintf("%s_%d_", key.Field, v)
+			case string:
+				if v == "text" {
+					keyString += fmt.Sprintf("%s_text_", key.Field)
+				} else {
+					keyString += fmt.Sprintf("%s_%s_", key.Field, v)
+				}
+			default:
+				keyString += fmt.Sprintf("%s_%v_", key.Field, v)
+			}
 		}
-	}
-	if hasTextIndex {
+	} else {
 		keyString += "text_"
 		if m.Options.DefaultLanguage != "" {
 			keyString += fmt.Sprintf("default_language_%s_", m.Options.DefaultLanguage)
+		}
+		if m.Options.Weights != nil {
+			for k, v := range m.Options.Weights {
+				keyString += fmt.Sprintf("weights_%s_%v_", k, v)
+			}
 		}
 	}
 	if m.Options.Collation != nil && m.Options.Collation.Locale != "" {

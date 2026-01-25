@@ -119,6 +119,7 @@ func (ctrl *controller) Create(ctx *fiber.Ctx) error {
 					Name:         index.Name,
 					KeySignature: index.KeySignature,
 					Keys:         keys,
+					IsText:       index.IsText,
 				})
 			}
 		}

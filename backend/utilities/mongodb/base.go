@@ -38,6 +38,7 @@ type Index struct {
 	Name         string      `bson:"name"`
 	KeySignature string      `bson:"key_signature"`
 	Keys         []IndexKey  `bson:"keys"`
+	IsText       bool        `bson:"is_text"`
 }
 
 type Collation struct {
@@ -66,30 +67,32 @@ func (m *Index) GetKeySignature() string {
 		return ""
 	}
 	var keyString string
-	hasTextIndex := false
 	keys := m.Keys
 	slices.SortFunc(m.Keys, func(keyFirst, keySecond IndexKey) int {
 		return strings.Compare(keyFirst.Field, keySecond.Field)
 	})
 	for _, key := range keys {
+		if m.IsText && (key.Field == "_fts" || key.Field == "_ftsx") {
+			continue
+		}
 		switch v := key.Value.(type) {
 		case int32:
 			keyString += fmt.Sprintf("%s_%d_", key.Field, v)
 		case string:
-			if v == "text" {
-				keyString += fmt.Sprintf("%s_text_", key.Field)
-				hasTextIndex = true
-			} else {
-				keyString += fmt.Sprintf("%s_%s_", key.Field, v)
-			}
+			keyString += fmt.Sprintf("%s_%s_", key.Field, v)
 		default:
 			keyString += fmt.Sprintf("%s_%v_", key.Field, v)
 		}
 	}
-	if hasTextIndex {
+	if m.IsText {
 		keyString += "text_"
 		if m.Options.DefaultLanguage != "" {
 			keyString += fmt.Sprintf("default_language_%s_", m.Options.DefaultLanguage)
+		}
+		if len(m.Options.Weights) > 0 {
+			for k, v := range m.Options.Weights {
+				keyString += fmt.Sprintf("weights_%s_%v_", k, v)
+			}
 		}
 	}
 	if m.Options.Collation != nil && m.Options.Collation.Locale != "" {

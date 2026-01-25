@@ -8,6 +8,18 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+func isTextIndex(keys []IndexKey) bool {
+	for _, key := range keys {
+		if key.Field == "_fts" || key.Field == "_ftsx" {
+			return true
+		}
+		if v, ok := key.Value.(string); ok && v == "text" {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *service) TestConnection(uri string) error {
 	opts := options.Client()
 	opts.ApplyURI(uri)
@@ -63,6 +75,9 @@ func (s *service) GetIndexesByDbNameAndCollections(dbName string, collections []
 				if k == "_id" {
 					isDefaultIndex = true
 					break
+				}
+				if k == "_fts" || k == "_ftsx" {
+					index.IsText = true
 				}
 				key := IndexKey{
 					Field: k,
@@ -291,6 +306,7 @@ func (s *service) GetIndexesByDbName(dbName string) ([]Index, error) {
 			if name, ok := indexDoc["name"].(string); ok {
 				index.Name = name
 			}
+			index.IsText = isTextIndex(index.Keys)
 			index.KeySignature = index.GetKeySignature()
 			indexes = append(indexes, index)
 		}
