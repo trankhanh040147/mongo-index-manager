@@ -107,12 +107,16 @@ func (ctrl *controller) Create(ctx *fiber.Ctx) error {
 						NumericOrdering: index.Options.Collation.NumericOrdering,
 					}
 				}
+				defaultLanguage := index.Options.DefaultLanguage
+				if index.IsText && defaultLanguage == "" {
+					defaultLanguage = "none"
+				}
 				indexes = append(indexes, models.Index{
 					Options: models.IndexOption{
 						ExpireAfterSeconds: index.Options.ExpireAfterSeconds,
 						IsUnique:           index.Options.IsUnique,
 						Collation:          collation,
-						DefaultLanguage:    index.Options.DefaultLanguage,
+						DefaultLanguage:    defaultLanguage,
 						Weights:            index.Options.Weights,
 					},
 					Collection:   index.Collection,

@@ -30,7 +30,7 @@ type IndexCreateOption struct {
 	ExpireAfterSeconds *int32                 `json:"expire_after_seconds" validate:"omitempty,gte=0"`
 	Collation          *CollationCreateOption `json:"collation,omitempty"`
 	Weights            map[string]interface{} `json:"weights,omitempty"`
-	DefaultLanguage    string                 `json:"default_language,omitempty"`
+	DefaultLanguage    string                 `json:"default_language,omitempty" validate:"omitempty,mongodbLanguage"`
 	IsUnique           bool                   `json:"is_unique" validate:"omitempty"`
 }
 
@@ -77,6 +77,19 @@ func (v *IndexCreateBodyValidate) Validate() error {
 	}
 	if v.Options.Collation != nil && v.Options.Collation.Locale == "" {
 		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"options.collation": "locale is required"}})
+	}
+	if hasTextIndex && v.Options.Weights != nil && len(v.Options.Weights) > 0 {
+		textFields := make(map[string]bool)
+		for _, key := range v.Keys {
+			if val, ok := key.Value.(string); ok && val == "text" {
+				textFields[key.Field] = true
+			}
+		}
+		for field := range textFields {
+			if _, exists := v.Options.Weights[field]; !exists {
+				return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"options.weights": "all text fields must be present in weights"}})
+			}
+		}
 	}
 	return nil
 }
@@ -165,7 +178,7 @@ type IndexUpdateOption struct {
 	ExpireAfterSeconds *int32                 `json:"expire_after_seconds" validate:"omitempty,gte=0"`
 	Collation          *CollationCreateOption `json:"collation,omitempty"`
 	Weights            map[string]interface{} `json:"weights,omitempty"`
-	DefaultLanguage    string                 `json:"default_language,omitempty"`
+	DefaultLanguage    string                 `json:"default_language,omitempty" validate:"omitempty,mongodbLanguage"`
 	IsUnique           bool                   `json:"is_unique" validate:"omitempty"`
 }
 
@@ -212,6 +225,19 @@ func (v *IndexUpdateBodyValidate) Validate() error {
 	}
 	if v.Options.Collation != nil && v.Options.Collation.Locale == "" {
 		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"options.collation": "locale is required"}})
+	}
+	if hasTextIndex && v.Options.Weights != nil && len(v.Options.Weights) > 0 {
+		textFields := make(map[string]bool)
+		for _, key := range v.Keys {
+			if val, ok := key.Value.(string); ok && val == "text" {
+				textFields[key.Field] = true
+			}
+		}
+		for field := range textFields {
+			if _, exists := v.Options.Weights[field]; !exists {
+				return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: fiber.Map{"options.weights": "all text fields must be present in weights"}})
+			}
+		}
 	}
 	return nil
 }

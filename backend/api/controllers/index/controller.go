@@ -105,6 +105,9 @@ func (ctrl *controller) Create(ctx *fiber.Ctx) error {
 		keyFields[i] = key.Field
 	}
 	index.IsText = models.IsTextIndex(index.Keys)
+	if index.IsText && index.Options.DefaultLanguage == "" {
+		index.Options.DefaultLanguage = "none"
+	}
 	index.KeySignature = index.GetKeySignature()
 	if index.Name == "" {
 		index.Name = index.KeySignature
@@ -374,6 +377,9 @@ func (ctrl *controller) Update(ctx *fiber.Ctx) error {
 		return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
 	}
 	indexUpdate.IsText = models.IsTextIndex(indexUpdate.Keys)
+	if indexUpdate.IsText && indexUpdate.Options.DefaultLanguage == "" {
+		indexUpdate.Options.DefaultLanguage = "none"
+	}
 	indexUpdate.KeySignature = indexUpdate.GetKeySignature()
 	if indexUpdate.Name == "" {
 		indexUpdate.Name = indexUpdate.KeySignature
@@ -876,6 +882,9 @@ func (ctrl *controller) SyncFromDatabase(ctx *fiber.Ctx) error {
 			DatabaseId: requestBody.DatabaseId,
 		}
 		indexModel.IsText = clientIndex.IsText
+		if indexModel.IsText && indexModel.Options.DefaultLanguage == "" {
+			indexModel.Options.DefaultLanguage = "none"
+		}
 		indexModel.KeySignature = indexModel.GetKeySignature()
 		if indexModel.Name == "" {
 			indexModel.Name = indexModel.KeySignature
