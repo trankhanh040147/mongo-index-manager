@@ -12,6 +12,15 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
         setCurrentKeys(index?.keys || [{field: '', value: 1}]);
     }, [index, modal]);
 
+    // MongoDB language code validation (ISO 639-1 two-letter codes + "none")
+    const isValidMongoDBLanguage = (value) => {
+        if (!value || value.trim() === '') return true; // Optional field
+        if (value === 'none') return true;
+        // ISO 639-1 two-letter codes
+        const iso6391Pattern = /^[a-z]{2}$/;
+        return iso6391Pattern.test(value.toLowerCase());
+    };
+
     const validationSchema = Yup.object({
         unique: Yup.boolean().default(false),
         keys: Yup.array().of(
@@ -42,7 +51,13 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
         collationCaseFirst: Yup.string().oneOf(['upper', 'lower', ''], "Case first must be 'upper', 'lower', or empty").nullable(),
         collationNumericOrdering: Yup.boolean().nullable(),
         // Text index fields
-        defaultLanguage: Yup.string().nullable(),
+        defaultLanguage: Yup.string().test('mongodb-language', 'Must be a valid MongoDB language code (ISO 639-1 two-letter code) or "none"', function(value) {
+            if (!value || value.trim() === '') return true; 
+            if (!isValidMongoDBLanguage(value)) {
+                return this.createError({ message: 'Must be a valid MongoDB language code (ISO 639-1 two-letter code like "en", "fr", "de") or "none"' });
+            }
+            return true;
+        }).nullable(),
         weights: Yup.string().test('valid-json', 'Weights must be valid JSON', function(value) {
             if (!value || value.trim() === '') return true;
             try {
@@ -60,11 +75,43 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
             return this.createError({ message: 'Text indexes cannot have collation enabled' });
         }
         return true;
+    }).test('weights-contain-all-text-fields', 'All text fields in keys must be present in weights map', function(values) {
+        if (values.indexType !== 'text' || !values.weights || values.weights.trim() === '') {
+            return true;
+        }
+        
+        try {
+            const weights = JSON.parse(values.weights);
+            if (typeof weights !== 'object' || Array.isArray(weights)) {
+                return true;
+            }
+            
+            // Get all text fields from keys
+            const textFields = values.keys
+                .filter(key => key.field && key.field.trim() !== '')
+                .map(key => key.field);
+            
+            // Check if all text fields are in weights map
+            const missingFields = textFields.filter(field => !(field in weights));
+            
+            if (missingFields.length > 0) {
+                return this.createError({ 
+                    message: `All text fields must be present in weights map. Missing: ${missingFields.join(', ')}` 
+                });
+            }
+            
+            return true;
+        } catch (e) {
+            return true;
+        }
     });
 
 
     // Determine index type from existing index
     const getInitialIndexType = () => {
+        if (index?.is_text === true) {
+            return 'text';
+        }
         if (index?.options?.default_language || index?.options?.weights) {
             return 'text';
         }
@@ -87,7 +134,7 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
             collationCaseFirst: index?.options?.collation?.case_first || '',
             collationNumericOrdering: index?.options?.collation?.numeric_ordering || false,
             // Text index fields
-            defaultLanguage: index?.options?.default_language || '',
+            defaultLanguage: index?.options?.default_language === 'none' ? '' : (index?.options?.default_language || ''),
             weights: index?.options?.weights ? JSON.stringify(index.options.weights, null, 2) : '',
         },
         validationSchema,

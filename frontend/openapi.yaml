@@ -625,12 +625,17 @@ components:
         default_language:
           type: string
           nullable: true
-          description: Default language for text indexes
+          description: |
+            Default language for text indexes. Must be a valid MongoDB language code (ISO 639-1 two-letter code) or "none".
+            If not specified for a text index, it will default to "none".
+            Examples: "en", "fr", "de", "none"
         weights:
           type: object
           additionalProperties: true
           nullable: true
-          description: Field weights for text indexes
+          description: |
+            Field weights for text indexes. When provided, all text fields in the index keys must be present in the weights map.
+            Each key should be a field name and the value should be the weight (number).
 
     IndexCreateRequest:
       type: object

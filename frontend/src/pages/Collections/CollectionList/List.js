@@ -79,7 +79,7 @@ const Collections = () => {
         }),
         onSubmit: (values) => {
             console.log("submitted CreateCollection")
-            dispatch(createCollection({databaseID: currentDatabase.id, collection: values}))
+            dispatch(createCollection({databaseID: currentDatabase.id, collection: values.collection}))
                 .then(() => {
                     validation.resetForm();
                 })

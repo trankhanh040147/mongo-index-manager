@@ -320,15 +320,3 @@ func (s *service) GetIndexesByDbName(dbName string) ([]Index, error) {
 	}
 	return indexes, nil
 }
-
-func (s *service) CreateCollection(dbName string, collectionName string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
-	defer cancel()
-	db := s.client.Database(dbName)
-	err := db.CreateCollection(ctx, collectionName)
-	if err != nil {
-		logger.Error().Err(err).Str("dbName", dbName).Str("collection", collectionName).Str("function", "CreateCollection").Str("functionInline", "db.CreateCollection").Msg("mongodb")
-		return err
-	}
-	return nil
-}

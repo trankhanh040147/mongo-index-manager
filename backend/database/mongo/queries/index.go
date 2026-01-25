@@ -35,6 +35,8 @@ type IndexQuery interface {
 	UpdateNameKeySignatureOptionsKeysById(id primitive.ObjectID, name, keySignature string, indexOpt models.IndexOption, keys []models.IndexKey) error
 	DeleteById(id primitive.ObjectID) error
 	DeleteByDatabaseId(databaseId primitive.ObjectID) error
+	GetOneByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string, opts ...OptionsQuery) (index *models.Index, err error)
+	UpsertOneByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string, index models.Index) (err error)
 }
 
 type indexQuery struct {
@@ -408,6 +410,54 @@ func (q *indexQuery) CreateMany(indexes []models.Index) error {
 			return response.NewError(fiber.StatusConflict, response.ErrorOptions{Data: respErr.ErrResourceConflict})
 		}
 		logger.Error().Err(err).Str("function", "CreateMany").Str("functionInline", "q.collection.InsertMany").Msg("indexQuery")
+		return response.NewError(fiber.StatusInternalServerError)
+	}
+	return nil
+}
+
+func (q *indexQuery) GetOneByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string, opts ...OptionsQuery) (*models.Index, error) {
+	opt := NewOptions()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	var data models.Index
+	optFind := &options.FindOneOptions{Projection: opt.QueryOnlyField()}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	if err := q.collection.FindOne(ctx, bson.M{"database_id": databaseId, "collection": collection}, optFind).Decode(&data); err != nil {
+		if errors.Is(err, mongoDriver.ErrNoDocuments) {
+			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Index not found"})
+		}
+		logger.Error().Err(err).Str("function", "GetOneByDatabaseIdAndCollection").Str("functionInline", "q.collection.FindOne").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	return &data, nil
+}
+
+func (q *indexQuery) UpsertOneByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string, index models.Index) error {
+	currentTime := time.Now()
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	if _, err := q.collection.UpdateOne(ctx,
+		bson.M{
+			"database_id":   databaseId,
+			"collection":    collection,
+			"key_signature": index.KeySignature,
+		},
+		bson.M{
+			"$set": bson.M{
+				"updated_at": currentTime,
+				"name":       index.Name,
+				"options":    index.Options,
+				"keys":       index.Keys,
+				"is_text":    index.IsText,
+			},
+			"$setOnInsert": bson.M{
+				"created_at": currentTime,
+			},
+		},
+		options.Update().SetUpsert(true)); err != nil {
+		logger.Error().Err(err).Str("function", "UpsertOneByDatabaseIdAndCollection").Str("functionInline", "q.collection.UpdateOne").Msg("indexQuery")
 		return response.NewError(fiber.StatusInternalServerError)
 	}
 	return nil

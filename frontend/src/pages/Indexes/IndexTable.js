@@ -87,11 +87,16 @@ const IndexTable = ({indexes, selectedIds, onToggleOne, onToggleAll, handleEdit,
                             )}
                         </td>
                         <td className="text_index">
-                            {index.options.default_language || index.options.weights ? (
+                            {index.is_text === true || index.options.default_language || index.options.weights ? (
                                 <div>
-                                    {index.options.default_language && (
+                                    {index.options.default_language && index.options.default_language !== 'none' && (
                                         <span className="badge bg-primary-subtle text-primary me-1">
                                             {index.options.default_language}
+                                        </span>
+                                    )}
+                                    {index.options.default_language === 'none' && (
+                                        <span className="badge bg-primary-subtle text-primary me-1">
+                                            none
                                         </span>
                                     )}
                                     {index.options.weights && (

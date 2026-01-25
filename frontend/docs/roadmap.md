@@ -303,6 +303,62 @@
 
 ---
 
+## v0.3.1 - Text Index Signature Fix & Validation
+
+### A. Backend v0.3.1 Changes
+
+#### Text Index Detection (`is_text` field)
+- Backend now returns `is_text` boolean field in all index responses
+- Backend automatically detects text indexes and sets `is_text` when syncing from MongoDB
+- Frontend should use `is_text` field when available to determine index type
+
+#### Default Language Handling
+- Backend defaults `default_language` to "none" when creating/updating text indexes without explicit default language
+- Frontend should send "none" (not null) when creating text indexes without default language
+
+#### Validation Enhancements
+- Backend validates that all text fields in keys are present in weights map when weights provided
+- Backend validates `default_language` against MongoDB language codes (ISO 639-1 + "none")
+- Frontend should match these validations
+
+### B. Frontend Implementation Tasks
+
+#### Index Type Detection
+- [x] Update `getInitialIndexType()` in `src/pages/Indexes/NewIndex.js` to check `index?.is_text` first, then fallback to `default_language`/`weights` check
+- [x] Update index table display to use `is_text` field if available (optional: add visual indicator)
+
+#### Default Language Handling
+- [x] Update `createIndex` thunk (`src/slices/index/thunk.js`) to send `default_language: "none"` when creating text index without explicit default language
+- [x] Update `updateIndex` thunk similarly
+- [x] Update form initial values to handle "none" as default language value
+
+#### Validation Enhancements
+- [x] Add validation in `NewIndex.js` to ensure all text fields in keys are present in weights map when weights provided
+- [x] Update `defaultLanguage` validation to accept MongoDB language codes (ISO 639-1 two-letter codes + "none")
+- [x] Add helper function or validation schema for MongoDB language code validation
+
+#### Response Handling
+- [x] Ensure index list/get responses handle `is_text` field (should be backward compatible)
+- [x] Update any index comparison displays to use `is_text` field if available
+
+### C. Testing
+
+- [ ] Test text index creation without default language (should send "none")
+- [ ] Test text index update without default language
+- [ ] Test validation: weights must include all text fields
+- [ ] Test validation: default_language must be valid MongoDB language code
+- [ ] Test backward compatibility: existing indexes without `is_text` field should still work
+- [ ] Test index type detection using `is_text` field from backend
+
+### Notes
+
+- All changes are backward compatible (existing indexes without `is_text` default to false)
+- Backend automatically sets `is_text` when syncing from MongoDB
+- Signature comparison fix is backend-only (no FE changes needed)
+- Default language "none" handling ensures consistent signatures after sync
+
+---
+
 ## v0.4.0 - Missing from Backend
 
 ### Sync Options

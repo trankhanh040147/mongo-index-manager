@@ -56,10 +56,11 @@ export const createIndex = createAsyncThunk(
 
             // Add text index options if index type is text
             if (indexType === 'text') {
-                if (values.defaultLanguage) {
+                // v0.3.1: Send "none" instead of null when default language is not specified
+                if (values.defaultLanguage && values.defaultLanguage.trim() !== '') {
                     options.default_language = values.defaultLanguage;
                 } else {
-                    options.default_language = null;
+                    options.default_language = 'none';
                 }
                 if (values.weights && values.weights.trim() !== '') {
                     try {
@@ -140,10 +141,11 @@ export const updateIndex = createAsyncThunk(
 
             // Add text index options if index type is text
             if (indexType === 'text') {
-                if (values.defaultLanguage) {
+                // v0.3.1: Send "none" instead of null when default language is not specified
+                if (values.defaultLanguage && values.defaultLanguage.trim() !== '') {
                     options.default_language = values.defaultLanguage;
                 } else {
-                    options.default_language = null;
+                    options.default_language = 'none';
                 }
                 if (values.weights && values.weights.trim() !== '') {
                     try {

@@ -373,18 +373,30 @@ func (ctrl *controller) CreateCollection(ctx *fiber.Ctx) error {
 	}
 	queryOption := queries.NewOptions()
 	queryOption.SetOnlyFields("uri", "db_name", "_id")
-	database, err := queries.NewDatabase(ctx.Context()).GetById(requestBody.DatabaseId, queryOption)
-	if err != nil {
+	if _, err := queries.NewDatabase(ctx.Context()).GetById(requestBody.DatabaseId, queryOption); err != nil {
 		return err
 	}
-	dbClient, err := mongodb.New(database.Uri)
-	if err != nil {
-		logger.Error().Err(err).Str("function", "CreateCollection").Str("functionInline", "mongodb.New").Msg("database-controller")
-		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot connect to database"})
+	indexQuery := queries.NewIndex(ctx.Context())
+	queryOption.SetOnlyFields("_id")
+	if _, err := indexQuery.GetOneByDatabaseIdAndCollection(requestBody.DatabaseId, requestBody.Collection, queryOption); err != nil {
+		if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
+			return err
+		}
+	} else {
+		return response.New(ctx, response.Options{Code: fiber.StatusConflict, Data: respErr.ErrResourceConflict})
 	}
-	if err = dbClient.CreateCollection(database.DBName, requestBody.Collection); err != nil {
-		logger.Error().Err(err).Str("function", "CreateCollection").Str("functionInline", "dbClient.CreateCollection").Msg("database-controller")
-		return response.New(ctx, response.Options{Code: fiber.StatusInternalServerError, Data: "Failed to create collection"})
+	index := models.Index{
+		DatabaseId: requestBody.DatabaseId,
+		Collection: requestBody.Collection,
+		Keys: []models.IndexKey{
+			{Field: "_id", Value: 1},
+		},
+		IsText: false,
+		Name:   "_id_",
+	}
+	index.KeySignature = index.GetKeySignature()
+	if err := indexQuery.UpsertOneByDatabaseIdAndCollection(requestBody.DatabaseId, requestBody.Collection, index); err != nil {
+		return err
 	}
 	return response.New(ctx, response.Options{
 		Code: fiber.StatusCreated,

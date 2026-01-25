@@ -24,7 +24,6 @@ type Service interface {
 	GetIndexesByDbName(dbName string) (indexes []Index, err error)
 	RemoveIndexes(dbName string, indexes []Index) error
 	CreateIndexes(dbName string, indexes []Index) error
-	CreateCollection(dbName string, collectionName string) error
 }
 type service struct {
 	client *mongo.Client
