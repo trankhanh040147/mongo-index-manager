@@ -386,14 +386,34 @@
 - [x] Filter `_id_` index in `onToggleAll` function
 - [x] Filter `_id_` index in comparison displays (`CompareIndexesByDatabase.js`, `CompareIndexesByCollection.js`)
 
+#### Bug5: Index text -> no ascending/descending input (because all text)
+- [x] Hide ascending/descending select dropdown when `indexType === 'text'` in `src/pages/Indexes/NewIndex.js`
+- [x] Automatically set key values to "text" for text indexes when adding new keys or switching index type
+- [x] Update validation schema to allow "text" as a value when `indexType === 'text'`
+- [x] Update initial values loading to handle text index keys properly (value "text" instead of 1/-1)
+- [x] Update `createIndex` and `updateIndex` thunks to transform keys array: set all key values to "text" for text indexes before sending to backend
+
+#### Bug6: Not render sync history properly (page /compare)
+- [x] Update `SyncHistory.js` to handle different response structures: array, object with `data` property (paginated), or object with `records` property
+- [x] Fix rendering condition to check if `syncs` is an array instead of checking `syncs.records`
+- [x] Fix sync history not loading on `/compare` page - component depends on Redux `currentDatabase` but compare page uses local state `selectedDatabase`
+- [x] Update `SyncHistory.js` to accept `selectedDatabase` as prop and use it if provided, otherwise fall back to Redux `currentDatabase`
+- [x] Update `CompareIndexesDashboard.js` to pass `selectedDatabase` prop to `SyncHistory` component
+
+#### Bug7: Button "Reload" on page `/compare` not working
+- [x] Update `onClickReload()` in `CompareIndexesDashboard.js` to re-dispatch compare actions
+- [x] Dispatch `compareByCollection` if collection is selected, otherwise dispatch `compareByDatabase`
+
 ### B. Implementation Details
 
 **Files Modified:**
 - `src/pages/Indexes/IndexesList.js` - Fixed delete call, added `_id_` filtering
-- `src/pages/Indexes/NewIndex.js` - Added weight inputs, disabled fields for text indexes
-- `src/slices/index/thunk.js` - Updated weights handling to use object instead of JSON string
+- `src/pages/Indexes/NewIndex.js` - Added weight inputs, disabled fields for text indexes, hide asc/desc dropdown for text indexes, auto-set key values to "text"
+- `src/slices/index/thunk.js` - Updated weights handling to use object instead of JSON string, transform keys for text indexes
 - `src/pages/Indexes/CompareIndexes/Components/CompareIndexesByDatabase.js` - Added `_id_` filtering
 - `src/pages/Indexes/CompareIndexes/Components/CompareIndexesByCollection.js` - Added `_id_` filtering
+- `src/pages/Indexes/CompareIndexes/Components/SyncHistory.js` - Fixed sync history rendering to handle different response structures
+- `src/pages/Indexes/CompareIndexes/CompareIndexesDashboard.js` - Fixed reload button to re-dispatch compare actions
 
 ### C. Testing
 
@@ -403,12 +423,25 @@
 - [x] Test Unique and Expire fields are disabled for text indexes
 - [x] Test `_id_` index is not displayed in index list
 - [x] Test `_id_` index is not shown in comparisons
+- [ ] Test text index creation - keys should have value "text", no asc/desc dropdown visible
+- [ ] Test editing existing text index - keys should load with value "text"
+- [ ] Test switching from regular to text index type - all keys should update to "text"
+- [ ] Test switching from text to regular index type - keys should allow 1/-1 selection
+- [ ] Test backend receives correct key values for text indexes
+- [ ] Test sync history renders correctly with array response
+- [ ] Test sync history renders correctly with paginated response (data property)
+- [ ] Test sync history renders correctly with records property
+- [ ] Test reload button refreshes compare data when collection is selected
+- [ ] Test reload button refreshes compare data when only database is selected
 
 ### Notes
 
 - Weights are now managed per-field in the UI, making it much easier for users
 - Text indexes cannot have unique or TTL options (MongoDB constraint)
 - `_id_` index is MongoDB's default index and should not be managed through the UI
+- Text indexes require key values to be "text" (string), not 1 or -1 (MongoDB constraint)
+- Sync history component now handles paginated responses with `data` array or `records` array
+- Reload button now properly refreshes compare data by re-dispatching compare actions
 
 ---
 

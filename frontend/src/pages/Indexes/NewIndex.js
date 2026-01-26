@@ -10,7 +10,12 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
     const [keyWeights, setKeyWeights] = useState({});
     
     useEffect(() => {
-        setCurrentKeys(index?.keys || [{field: '', value: 1}]);
+        const isTextIndex = index?.is_text === true || index?.options?.default_language || index?.options?.weights;
+        const initialKeys = index?.keys || [{field: '', value: 1}];
+        const keysWithTextValue = isTextIndex 
+            ? initialKeys.map(key => ({...key, value: 'text'}))
+            : initialKeys;
+        setCurrentKeys(keysWithTextValue);
         if (index?.options?.weights && typeof index.options.weights === 'object') {
             setKeyWeights(index.options.weights);
         } else {
@@ -32,7 +37,7 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
         keys: Yup.array().of(
             Yup.object().shape({
                 // field: Yup.string().required("Field is required").min(1, "Field is required"), // Update field validation
-                value: Yup.number().oneOf([1, -1], "Value must be 1 or -1").required("Value is required")
+                value: Yup.mixed().required("Value is required")
             })
         )
             .test(
@@ -42,7 +47,18 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
                     const fields = keys.map(key => key.field);
                     return new Set(fields).size === fields.length;
                 }
-            ).min(1, "At least one key is required"),
+            )
+            .test(
+                'text-index-values',
+                'Text index keys must have value "text"',
+                function(keys) {
+                    if (this.parent.indexType === 'text') {
+                        return keys.every(key => key.value === 'text');
+                    }
+                    return true;
+                }
+            )
+            .min(1, "At least one key is required"),
         expireAfterSeconds: Yup.number().integer().min(0, "Expire after seconds must be a non-negative integer").nullable(),
         indexType: Yup.string().oneOf(['regular', 'text'], "Index type must be regular or text").default('regular'),
         // Collation fields
@@ -89,7 +105,13 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
         initialValues: {
             name: index?.name || '',
             unique: index?.options?.is_unique || false,
-            keys: index?.keys || [{field: '', value: 1}],
+            keys: (() => {
+                const isTextIndex = getInitialIndexType() === 'text';
+                const initialKeys = index?.keys || [{field: '', value: 1}];
+                return isTextIndex 
+                    ? initialKeys.map(key => ({...key, value: 'text'}))
+                    : initialKeys;
+            })(),
             expireAfterSeconds: index?.options?.expire_after_seconds || null,
             indexType: getInitialIndexType(),
             // Collation fields
@@ -132,7 +154,9 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
 
 
     const addKeyField = () => {
-        const newKeys = currentKeys.length > 0 ? [...currentKeys, {field: '', value: 1}] : [{field: '', value: 1}];
+        const indexType = validation.values.indexType || 'regular';
+        const defaultValue = indexType === 'text' ? 'text' : 1;
+        const newKeys = currentKeys.length > 0 ? [...currentKeys, {field: '', value: defaultValue}] : [{field: '', value: defaultValue}];
         setCurrentKeys(newKeys);
         validation.setFieldValue('keys', newKeys);
         let valKeys = validation.getFieldProps('keys');
@@ -148,7 +172,12 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
     };
 
     const handleKeyChange = (index, field, value) => {
-        const newKeys = currentKeys.map((key, idx) => idx === index ? {...key, [field]: value} : key);
+        const indexType = validation.values.indexType || 'regular';
+        let finalValue = value;
+        if (field === 'value' && indexType === 'text') {
+            finalValue = 'text';
+        }
+        const newKeys = currentKeys.map((key, idx) => idx === index ? {...key, [field]: finalValue} : key);
         setCurrentKeys(newKeys);
         validation.setFieldValue('keys', newKeys);
     };
@@ -222,14 +251,16 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
                                                     }}
                                                     invalid={!!validation.errors.keys && !!validation.errors.keys[keyIndex] && validation.errors.keys[keyIndex].field && validation.touched.keys && validation.touched.keys[keyIndex]}
                                                 />
-                                                <select
-                                                    className="form-control me-2"
-                                                    value={key.value}
-                                                    onChange={(e) => handleKeyChange(keyIndex, 'value', parseInt(e.target.value))}
-                                                >
-                                                    <option value={1}>Ascending</option>
-                                                    <option value={-1}>Descending</option>
-                                                </select>
+                                                {validation.values.indexType !== 'text' && (
+                                                    <select
+                                                        className="form-control me-2"
+                                                        value={key.value}
+                                                        onChange={(e) => handleKeyChange(keyIndex, 'value', parseInt(e.target.value))}
+                                                    >
+                                                        <option value={1}>Ascending</option>
+                                                        <option value={-1}>Descending</option>
+                                                    </select>
+                                                )}
                                                 {validation.values.indexType === 'text' && key.field && (
                                                     <Input
                                                         type="number"
@@ -290,6 +321,9 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
                                                         validation.setFieldValue('indexType', 'regular');
                                                         validation.setFieldValue('defaultLanguage', '');
                                                         setKeyWeights({});
+                                                        const updatedKeys = currentKeys.map(key => ({...key, value: key.value === 'text' ? 1 : key.value}));
+                                                        setCurrentKeys(updatedKeys);
+                                                        validation.setFieldValue('keys', updatedKeys);
                                                     }}
                                                 />
                                                 <Label className="form-check-label" htmlFor="indexTypeRegular">Regular</Label>
@@ -308,6 +342,9 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
                                                         validation.setFieldValue('collationLocale', '');
                                                         validation.setFieldValue('unique', false);
                                                         validation.setFieldValue('expireAfterSeconds', null);
+                                                        const updatedKeys = currentKeys.map(key => ({...key, value: 'text'}));
+                                                        setCurrentKeys(updatedKeys);
+                                                        validation.setFieldValue('keys', updatedKeys);
                                                     }}
                                                 />
                                                 <Label className="form-check-label" htmlFor="indexTypeText">Text</Label>
@@ -541,7 +578,7 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
                                 // reset all
                                 toggle()
                                 validation.resetForm();
-                                setCurrentKeys([{field: '', value: 1}])
+                                setCurrentKeys([{field: '', value: validation.values.indexType === 'text' ? 'text' : 1}])
                                 setAdvancedOptionsOpen(false);
                                 setKeyWeights({});
                             }

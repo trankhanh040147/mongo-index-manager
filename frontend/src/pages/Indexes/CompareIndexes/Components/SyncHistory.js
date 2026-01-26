@@ -6,12 +6,11 @@ import {useDispatch, useSelector} from "react-redux";
 import {getSyncHistory as onGetSyncHistory} from "../../../../slices/sync/thunk";
 import {createSelector} from "reselect"; // Import a CSS file for custom styling
 
-const SyncHistoryComponent = ({}) => {
+const SyncHistoryComponent = ({selectedDatabase: propDatabase}) => {
     const dispatch = useDispatch();
 
     const selectSyncState = (state) => state.Syncs;
     const selectDatabaseState = (state) => state.Databases;
-    // selector
     const selectDashboardData = createSelector(
         [selectSyncState, selectDatabaseState],
         (syncs, databases) => ({
@@ -22,22 +21,21 @@ const SyncHistoryComponent = ({}) => {
     );
     const {syncData, reload, currentDatabase} = useSelector(selectDashboardData);
 
-    // useEffect(() => {
-    //     dispatch(onGetSyncHistory({}));
-    // }, [dispatch, reload]);
-    useEffect(() => {
-        if (currentDatabase?.id) {
-            dispatch(onGetSyncHistory({database_id: currentDatabase.id}))
-        }
-    }, [dispatch, currentDatabase?.id]);
+    const databaseToUse = propDatabase || currentDatabase;
 
     useEffect(() => {
-        if (!currentDatabase?.id) return;
+        if (databaseToUse?.id) {
+            dispatch(onGetSyncHistory({database_id: databaseToUse.id}))
+        }
+    }, [dispatch, databaseToUse?.id]);
+
+    useEffect(() => {
+        if (!databaseToUse?.id) return;
         const intervalId = setInterval(() => {
-            dispatch(onGetSyncHistory({database_id: currentDatabase.id}))
+            dispatch(onGetSyncHistory({database_id: databaseToUse.id}))
         }, 3000);
         return () => clearInterval(intervalId);
-    }, [dispatch, currentDatabase?.id]);
+    }, [dispatch, databaseToUse?.id]);
     // setInterval(() => {
     //     dispatch(onGetSyncHistory({}))
     // }, 1000)
@@ -46,7 +44,15 @@ const SyncHistoryComponent = ({}) => {
 
     useEffect(() => {
         console.log(syncData)
-        setSyncs(syncData);
+        if (Array.isArray(syncData)) {
+            setSyncs(syncData);
+        } else if (syncData?.data && Array.isArray(syncData.data)) {
+            setSyncs(syncData.data);
+        } else if (syncData?.records && Array.isArray(syncData.records)) {
+            setSyncs(syncData.records);
+        } else {
+            setSyncs([]);
+        }
     }, [syncData]);
 
     const [tooltipOpen, setTooltipOpen] = React.useState({});
@@ -96,8 +102,8 @@ const SyncHistoryComponent = ({}) => {
                 </tr>
                 </thead>
                 <tbody>
-                {syncs && syncs?.records &&
-                    syncs.records.map((record, index) => (
+                {Array.isArray(syncs) && syncs.length > 0 &&
+                    syncs.map((record, index) => (
                         <tr key={index} className={record.error ? 'error-row' : 'success-row'}>
                             <td className="icon-cell">{getStatusIcon(record, index)}</td>
                             <td>{record.database_name || record.database_id || ""}</td>

@@ -73,6 +73,11 @@ export const createIndex = createAsyncThunk(
             }
 
             values.options = options;
+            
+            if (indexType === 'text' && values.keys) {
+                values.keys = values.keys.map(key => ({...key, value: 'text'}));
+            }
+            
             response = postIndex(values);
 
             resp = await response;
@@ -152,6 +157,11 @@ export const updateIndex = createAsyncThunk(
             }
 
             values.options = options;
+            
+            if (indexType === 'text' && values.keys) {
+                values.keys = values.keys.map(key => ({...key, value: 'text'}));
+            }
+            
             response = putIndex(values);
 
             resp = await response;

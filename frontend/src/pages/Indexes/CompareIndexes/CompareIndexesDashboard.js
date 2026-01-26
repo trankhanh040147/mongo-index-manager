@@ -34,7 +34,7 @@ import "../indexTable.css"
 import CompareIndexesByDatabaseComponent from "./Components/CompareIndexesByDatabase"; // Import  file
 import CompareIndexesByCollectionComponent from "./Components/CompareIndexesByCollection";
 import SyncHistory from "./Components/SyncHistory";
-import {compareByCollection as onCompareByCollection, createSync} from "../../../slices/sync/thunk";
+import {compareByCollection as onCompareByCollection, compareByDatabase as onCompareByDatabase, createSync} from "../../../slices/sync/thunk";
 import {useDispatch} from "react-redux";
 import {toast, ToastContainer} from "react-toastify";
 import DeleteModal from "../../../Components/Common/DeleteModal";
@@ -108,7 +108,20 @@ const CompareIndexesDashboard = () => {
         }
 
         function onClickReload() {
-            setSelectedCollection(selectedCollection)
+            if (selectedCollection && selectedDatabase) {
+                dispatch(onCompareByCollection({
+                    values: {
+                        database_id: selectedDatabase.id,
+                        collections: [selectedCollection.collection]
+                    }
+                }));
+            } else if (selectedDatabase) {
+                dispatch(onCompareByDatabase({
+                    values: {
+                        database_id: selectedDatabase.id
+                    }
+                }));
+            }
         }
 
         function resetData() {
@@ -386,7 +399,7 @@ const CompareIndexesDashboard = () => {
                                         </tr>
                                         </thead>
                                         <tbody>
-                                        <SyncHistory/>
+                                        <SyncHistory selectedDatabase={selectedDatabase}/>
                                         </tbody>
                                     </table>
                                 </div>
