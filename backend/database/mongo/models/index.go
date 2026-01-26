@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -78,9 +79,14 @@ func (m *Index) GetKeySignature() string {
 		if m.Options.DefaultLanguage != "" {
 			keyString += fmt.Sprintf("default_language_%s_", m.Options.DefaultLanguage)
 		}
-		if m.Options.Weights != nil {
-			for k, v := range m.Options.Weights {
-				keyString += fmt.Sprintf("weights_%s_%v_", k, v)
+		if len(m.Options.Weights) > 0 {
+			weightKeys := make([]string, 0, len(m.Options.Weights))
+			for k := range m.Options.Weights {
+				weightKeys = append(weightKeys, k)
+			}
+			sort.Strings(weightKeys)
+			for _, k := range weightKeys {
+				keyString += fmt.Sprintf("weights_%s_%v_", k, m.Options.Weights[k])
 			}
 		}
 	}

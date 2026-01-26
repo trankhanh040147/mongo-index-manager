@@ -465,7 +465,6 @@ func (ctrl *controller) CompareByCollections(ctx *fiber.Ctx) error {
 		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot connect to database"})
 	}
 	clientIndexes, err := dbClient.GetIndexesByDbNameAndCollections(database.DBName, requestBody.Collections)
-
 	if err != nil {
 		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "dbClient.GetIndexesByDbNameAndCollections").Msg("index-controller")
 		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Cannot get indexes from database"})
@@ -509,8 +508,9 @@ func (ctrl *controller) CompareByCollections(ctx *fiber.Ctx) error {
 					DefaultLanguage:    index.Options.DefaultLanguage,
 					Weights:            index.Options.Weights,
 				},
-				Name: index.Name,
-				Keys: keys,
+				Name:         index.Name,
+				Keys:         keys,
+				KeySignature: index.KeySignature,
 			}
 			if _, exists := mapIndexClient[collection][index.KeySignature]; exists {
 				compareItem.MatchedIndexes = append(compareItem.MatchedIndexes, indexItem)
@@ -543,8 +543,9 @@ func (ctrl *controller) CompareByCollections(ctx *fiber.Ctx) error {
 					DefaultLanguage:    index.Options.DefaultLanguage,
 					Weights:            index.Options.Weights,
 				},
-				Name: index.Name,
-				Keys: keys,
+				Name:         index.Name,
+				Keys:         keys,
+				KeySignature: index.KeySignature,
 			})
 		}
 		result = append(result, compareItem)
@@ -635,8 +636,9 @@ func (ctrl *controller) CompareByDatabase(ctx *fiber.Ctx) error {
 					DefaultLanguage:    index.Options.DefaultLanguage,
 					Weights:            index.Options.Weights,
 				},
-				Name: index.Name,
-				Keys: keys,
+				Name:         index.Name,
+				Keys:         keys,
+				KeySignature: index.KeySignature,
 			}
 			if _, exists := mapIndexClient[collection][index.KeySignature]; exists {
 				compareItem.MatchedIndexes = append(compareItem.MatchedIndexes, indexItem)
@@ -669,8 +671,9 @@ func (ctrl *controller) CompareByDatabase(ctx *fiber.Ctx) error {
 					DefaultLanguage:    index.Options.DefaultLanguage,
 					Weights:            index.Options.Weights,
 				},
-				Name: index.Name,
-				Keys: keys,
+				Name:         index.Name,
+				Keys:         keys,
+				KeySignature: index.KeySignature,
 			})
 		}
 		result = append(result, compareItem)

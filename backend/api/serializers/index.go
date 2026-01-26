@@ -263,9 +263,10 @@ type IndexCompareByCollectionsResponseItem struct {
 }
 
 type IndexCompareByCollectionsIndex struct {
-	Options IndexCompareByCollectionsIndexOption `json:"options,omitempty"`
-	Name    string                               `json:"name"`
-	Keys    []IndexCompareByCollectionsIndexKey  `json:"keys"`
+	Options      IndexCompareByCollectionsIndexOption `json:"options,omitempty"`
+	Name         string                               `json:"name"`
+	Keys         []IndexCompareByCollectionsIndexKey  `json:"keys"`
+	KeySignature string                               `json:"key_signature"`
 }
 
 type IndexCompareByCollectionsIndexOption struct {
@@ -301,9 +302,10 @@ type IndexCompareByDatabaseResponseItem struct {
 }
 
 type IndexCompareByDatabaseIndex struct {
-	Options IndexCompareByDatabaseIndexOption `json:"options,omitempty"`
-	Name    string                            `json:"name"`
-	Keys    []IndexCompareByDatabaseIndexKey  `json:"keys"`
+	Options      IndexCompareByDatabaseIndexOption `json:"options,omitempty"`
+	Name         string                            `json:"name"`
+	Keys         []IndexCompareByDatabaseIndexKey  `json:"keys"`
+	KeySignature string                            `json:"key_signature"`
 }
 
 type IndexCompareByDatabaseIndexOption struct {
