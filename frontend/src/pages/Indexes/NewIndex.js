@@ -7,9 +7,15 @@ import './indexTable.css';
 const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
     const [currentKeys, setCurrentKeys] = useState(index?.keys || [{field: "", value: 1}]);
     const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(false);
+    const [keyWeights, setKeyWeights] = useState({});
     
     useEffect(() => {
         setCurrentKeys(index?.keys || [{field: '', value: 1}]);
+        if (index?.options?.weights && typeof index.options.weights === 'object') {
+            setKeyWeights(index.options.weights);
+        } else {
+            setKeyWeights({});
+        }
     }, [index, modal]);
 
     // MongoDB language code validation (ISO 639-1 two-letter codes + "none")
@@ -58,52 +64,12 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
             }
             return true;
         }).nullable(),
-        weights: Yup.string().test('valid-json', 'Weights must be valid JSON', function(value) {
-            if (!value || value.trim() === '') return true;
-            try {
-                const parsed = JSON.parse(value);
-                if (typeof parsed !== 'object' || Array.isArray(parsed)) {
-                    return this.createError({ message: 'Weights must be a JSON object' });
-                }
-                return true;
-            } catch (e) {
-                return this.createError({ message: 'Invalid JSON format' });
-            }
-        }).nullable(),
+        weights: Yup.mixed().nullable(),
     }).test('text-index-no-collation', 'Text indexes cannot have collation', function(values) {
         if (values.indexType === 'text' && values.collationEnabled) {
             return this.createError({ message: 'Text indexes cannot have collation enabled' });
         }
         return true;
-    }).test('weights-contain-all-text-fields', 'All text fields in keys must be present in weights map', function(values) {
-        if (values.indexType !== 'text' || !values.weights || values.weights.trim() === '') {
-            return true;
-        }
-        
-        try {
-            const weights = JSON.parse(values.weights);
-            if (typeof weights !== 'object' || Array.isArray(weights)) {
-                return true;
-            }
-            
-            // Get all text fields from keys
-            const textFields = values.keys
-                .filter(key => key.field && key.field.trim() !== '')
-                .map(key => key.field);
-            
-            // Check if all text fields are in weights map
-            const missingFields = textFields.filter(field => !(field in weights));
-            
-            if (missingFields.length > 0) {
-                return this.createError({ 
-                    message: `All text fields must be present in weights map. Missing: ${missingFields.join(', ')}` 
-                });
-            }
-            
-            return true;
-        } catch (e) {
-            return true;
-        }
     });
 
 
@@ -135,13 +101,31 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
             collationNumericOrdering: index?.options?.collation?.numeric_ordering || false,
             // Text index fields
             defaultLanguage: index?.options?.default_language === 'none' ? '' : (index?.options?.default_language || ''),
-            weights: index?.options?.weights ? JSON.stringify(index.options.weights, null, 2) : '',
+            weights: null,
         },
         validationSchema,
         onSubmit: (values) => {
+            if (values.indexType === 'text') {
+                const textFields = values.keys
+                    .filter(key => key.field && key.field.trim() !== '')
+                    .map(key => key.field);
+                
+                const weightsKeys = Object.keys(keyWeights);
+                if (weightsKeys.length > 0) {
+                    const missingFields = textFields.filter(field => !(field in keyWeights));
+                    if (missingFields.length > 0) {
+                        validation.setFieldError('weights', `All text fields must have weights. Missing: ${missingFields.join(', ')}`);
+                        return;
+                    }
+                }
+                values.weights = Object.keys(keyWeights).length > 0 ? keyWeights : null;
+            } else {
+                values.weights = null;
+            }
             onSubmit(values, isEdit);
             validation.resetForm();
             setAdvancedOptionsOpen(false);
+            setKeyWeights({});
             toggle();
         }
     });
@@ -215,26 +199,68 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
                                     </div>
                                     <div className="mb-3">
                                         <Label className="form-label">Keys</Label>
-                                        {validation.values.keys.map((key, index) => (
-                                            <div key={index} className="d-flex align-items-center mb-2">
+                                        {validation.values.keys.map((key, keyIndex) => (
+                                            <div key={keyIndex} className="d-flex align-items-center mb-2">
                                                 <Input
                                                     type="text"
                                                     className="form-control me-2"
                                                     placeholder="Field"
                                                     value={key.field}
-                                                    onChange={(e) => handleKeyChange(index, 'field', e.target.value)}
-                                                    // onChange={validation.handleChange}
-                                                    invalid={!!validation.errors.keys && !!validation.errors.keys[index] && validation.errors.keys[index].field && validation.touched.keys && validation.touched.keys[index]}
+                                                    onChange={(e) => {
+                                                        const oldField = key.field;
+                                                        const newField = e.target.value;
+                                                        handleKeyChange(keyIndex, 'field', newField);
+                                                        // Update weights key if field name changed
+                                                        if (oldField && oldField !== newField && keyWeights[oldField] !== undefined) {
+                                                            const newWeights = {...keyWeights};
+                                                            if (newField) {
+                                                                newWeights[newField] = keyWeights[oldField];
+                                                            }
+                                                            delete newWeights[oldField];
+                                                            setKeyWeights(newWeights);
+                                                        }
+                                                    }}
+                                                    invalid={!!validation.errors.keys && !!validation.errors.keys[keyIndex] && validation.errors.keys[keyIndex].field && validation.touched.keys && validation.touched.keys[keyIndex]}
                                                 />
                                                 <select
                                                     className="form-control me-2"
                                                     value={key.value}
-                                                    onChange={(e) => handleKeyChange(index, 'value', parseInt(e.target.value))}
+                                                    onChange={(e) => handleKeyChange(keyIndex, 'value', parseInt(e.target.value))}
                                                 >
                                                     <option value={1}>Ascending</option>
                                                     <option value={-1}>Descending</option>
                                                 </select>
-                                                <Button color="danger" onClick={() => removeKeyField(index)}>
+                                                {validation.values.indexType === 'text' && key.field && (
+                                                    <Input
+                                                        type="number"
+                                                        className="form-control me-2"
+                                                        style={{width: '100px'}}
+                                                        placeholder="Weight"
+                                                        value={keyWeights[key.field] || ''}
+                                                        onChange={(e) => {
+                                                            const weight = e.target.value ? parseFloat(e.target.value) : undefined;
+                                                            setKeyWeights(prev => {
+                                                                const newWeights = {...prev};
+                                                                if (weight !== undefined && !isNaN(weight)) {
+                                                                    newWeights[key.field] = weight;
+                                                                } else {
+                                                                    delete newWeights[key.field];
+                                                                }
+                                                                return newWeights;
+                                                            });
+                                                        }}
+                                                    />
+                                                )}
+                                                <Button color="danger" onClick={() => {
+                                                    const fieldToRemove = key.field;
+                                                    removeKeyField(keyIndex);
+                                                    // Remove weight for deleted field
+                                                    if (fieldToRemove && keyWeights[fieldToRemove] !== undefined) {
+                                                        const newWeights = {...keyWeights};
+                                                        delete newWeights[fieldToRemove];
+                                                        setKeyWeights(newWeights);
+                                                    }
+                                                }}>
                                                     <i class="ri-subtract-line"></i>
                                                 </Button>
                                             </div>
@@ -242,6 +268,9 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
                                         <Button color="primary" onClick={addKeyField}>
                                             <i class="ri-add-fill"></i>
                                         </Button>
+                                        {validation.values.indexType === 'text' && (
+                                            <small className="text-muted d-block mt-1">Enter weight for each text field (optional)</small>
+                                        )}
                                         {validation.errors.keys && validation.touched.keys && (
                                             <div className="text-danger">{validation.errors.keys}</div>
                                         )}
@@ -260,7 +289,7 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
                                                     onChange={() => {
                                                         validation.setFieldValue('indexType', 'regular');
                                                         validation.setFieldValue('defaultLanguage', '');
-                                                        validation.setFieldValue('weights', '');
+                                                        setKeyWeights({});
                                                     }}
                                                 />
                                                 <Label className="form-check-label" htmlFor="indexTypeRegular">Regular</Label>
@@ -277,6 +306,8 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
                                                         validation.setFieldValue('indexType', 'text');
                                                         validation.setFieldValue('collationEnabled', false);
                                                         validation.setFieldValue('collationLocale', '');
+                                                        validation.setFieldValue('unique', false);
+                                                        validation.setFieldValue('expireAfterSeconds', null);
                                                     }}
                                                 />
                                                 <Label className="form-check-label" htmlFor="indexTypeText">Text</Label>
@@ -285,7 +316,12 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
                                         <small className="text-muted">Text indexes cannot have collation</small>
                                     </div>
                                     <div className="mb-3">
-                                        <Label className="form-label">Is Unique</Label>
+                                        <Label className="form-label">
+                                            Is Unique
+                                            {validation.values.indexType === 'text' && (
+                                                <small className="text-muted ms-2">(Not available for text indexes)</small>
+                                            )}
+                                        </Label>
                                         <div>
                                             <div className="form-check form-check-inline">
                                                 <Input
@@ -296,8 +332,9 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
                                                     value="true"
                                                     checked={validation.values.unique === true}
                                                     onChange={() => validation.setFieldValue('unique', true)}
+                                                    disabled={validation.values.indexType === 'text'}
                                                 />
-                                                <Label className="form-check-label" htmlFor="uniqueYes">Yes</Label>
+                                                <Label className="form-check-label" htmlFor="uniqueYes" style={validation.values.indexType === 'text' ? {opacity: 0.5} : {}}>Yes</Label>
                                             </div>
                                             <div className="form-check form-check-inline">
                                                 <Input
@@ -308,14 +345,18 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
                                                     value="false"
                                                     checked={validation.values.unique === false}
                                                     onChange={() => validation.setFieldValue('unique', false)}
+                                                    disabled={validation.values.indexType === 'text'}
                                                 />
-                                                <Label className="form-check-label" htmlFor="uniqueNo">No</Label>
+                                                <Label className="form-check-label" htmlFor="uniqueNo" style={validation.values.indexType === 'text' ? {opacity: 0.5} : {}}>No</Label>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="mb-3">
                                         <Label className="form-label" htmlFor="expire-after-input">
                                             Expire After Seconds
+                                            {validation.values.indexType === 'text' && (
+                                                <small className="text-muted ms-2">(Not available for text indexes)</small>
+                                            )}
                                         </Label>
                                         <Input
                                             type="number"
@@ -326,6 +367,8 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
                                             onChange={validation.handleChange}
                                             placeholder="Enter expiry time in seconds (optional)"
                                             invalid={!!validation.errors.expireAfterSeconds && validation.touched.expireAfterSeconds}
+                                            disabled={validation.values.indexType === 'text'}
+                                            style={validation.values.indexType === 'text' ? {opacity: 0.5} : {}}
                                         />
                                         {validation.errors.expireAfterSeconds && validation.touched.expireAfterSeconds && (
                                             <div className="text-danger">{validation.errors.expireAfterSeconds}</div>
@@ -476,25 +519,6 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
                                                             )}
                                                             <small className="text-muted">Language for text index (optional)</small>
                                                         </div>
-                                                        <div className="mb-3">
-                                                            <Label className="form-label" htmlFor="weights">
-                                                                Weights (JSON)
-                                                            </Label>
-                                                            <Input
-                                                                type="textarea"
-                                                                id="weights"
-                                                                name="weights"
-                                                                rows="4"
-                                                                value={validation.values.weights}
-                                                                onChange={validation.handleChange}
-                                                                placeholder='{"field1": 10, "field2": 5}'
-                                                                invalid={!!validation.errors.weights && validation.touched.weights}
-                                                            />
-                                                            {validation.errors.weights && validation.touched.weights && (
-                                                                <div className="text-danger">{validation.errors.weights}</div>
-                                                            )}
-                                                            <small className="text-muted">JSON object with field names and numeric weights (optional)</small>
-                                                        </div>
                                                     </div>
                                                 )}
 
@@ -519,6 +543,7 @@ const NewIndex = ({modal, setModal, toggle, onSubmit, isEdit, index}) => {
                                 validation.resetForm();
                                 setCurrentKeys([{field: '', value: 1}])
                                 setAdvancedOptionsOpen(false);
+                                setKeyWeights({});
                             }
                             }
                             className="btn-light"

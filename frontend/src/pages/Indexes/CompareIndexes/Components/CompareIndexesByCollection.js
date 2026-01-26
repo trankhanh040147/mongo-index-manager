@@ -103,34 +103,36 @@ const CompareIndexesByCollectionComponent = ({selectedDatabase, selectedCollecti
         );
     };
 
-    const renderIndexes = (indexes, title, groupClass) => (
-        <>
-            <tr>
-                <th colSpan="3" className="group-title">{title}</th>
-            </tr>
-            {indexes &&
-            indexes.length > 0 ? (
-                indexes.map((index, idx) => (
-                    <tr key={idx} className={groupClass}>
-                        <td>{index.name}</td>
-                        <td>
-                            {index.keys.map((keyItem, kIdx) => (
-                                <div key={kIdx}
-                                     className={`key-item ${keyItem.value === 1 ? 'ascending' : keyItem.value === -1 ? 'descending' : ''}`}>
-                                    <span className="field">{keyItem.field}</span>: {renderValueLabel(keyItem.value)}
-                                </div>
-                            ))}
-                        </td>
-                        <td>{renderOptions(index.options)}</td>
-                    </tr>
-                ))
-            ) : (
+    const renderIndexes = (indexes, title, groupClass) => {
+        const filteredIndexes = (indexes || []).filter(idx => idx.name !== '_id_');
+        return (
+            <>
                 <tr>
-                    <td colSpan="3">No {title}</td>
+                    <th colSpan="3" className="group-title">{title}</th>
                 </tr>
-            )}
-        </>
-    );
+                {filteredIndexes.length > 0 ? (
+                    filteredIndexes.map((index, idx) => (
+                        <tr key={idx} className={groupClass}>
+                            <td>{index.name}</td>
+                            <td>
+                                {index.keys.map((keyItem, kIdx) => (
+                                    <div key={kIdx}
+                                         className={`key-item ${keyItem.value === 1 ? 'ascending' : keyItem.value === -1 ? 'descending' : ''}`}>
+                                        <span className="field">{keyItem.field}</span>: {renderValueLabel(keyItem.value)}
+                                    </div>
+                                ))}
+                            </td>
+                            <td>{renderOptions(index.options)}</td>
+                        </tr>
+                    ))
+                ) : (
+                    <tr>
+                        <td colSpan="3">No {title}</td>
+                    </tr>
+                )}
+            </>
+        );
+    };
 
     return (
         <>

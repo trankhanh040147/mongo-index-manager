@@ -408,9 +408,9 @@ export const getIndex = (id) => api.get(url.GET_INDEX + '/' + id);
 export const putIndex = (data) => api.put(url.GET_INDEX + '/' + data.id, data);
 export const getIndexListApi = (params) => api.create(url.URL_INDEX_LIST, params);
 export const exportIndexesApi = (data) => api.create(url.URL_INDEX_EXPORT, data);
-export const importIndexesApi = (data) => api.createForm(url.URL_INDEX + '/' + data.database_id + URL_INDEX_IMPORT, data);
+export const importIndexesApi = (data) => api.createForm(`${url.GET_INDEX}/${data.database_id}${URL_INDEX_IMPORT}`, data);
 export const deleteIndexListApi = (id) => {
-    return api.delete(`${url.URL_INDEX}/${id}`);
+    return api.delete(`${url.GET_INDEX}/${id}`);
 };
 export const compareByCollectionAPI = (data) => api.create(url.URL_COMPARE_COLLECTION, data);
 export const compareByDatabaseAPI = (data) => api.create(url.URL_COMPARE_DATABASE, data);

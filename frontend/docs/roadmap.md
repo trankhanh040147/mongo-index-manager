@@ -359,6 +359,59 @@
 
 ---
 
+## v0.3.2 - Bug Fixes
+
+### A. Bug Fixes
+
+#### Bug1: Cannot delete index -> URL not found
+- [x] Fix `handleDeleteClick` in `src/pages/Indexes/IndexesList.js` to pass `{data: {id: index.id}}` instead of `{data: index}`
+- [x] Ensure delete thunk receives correct data structure
+
+#### Bug2: Typing weights as JSON is too complicated
+- [x] Add weight input field next to each key field when index type is 'text'
+- [x] Store weights as object in component state (`keyWeights`), keyed by field name
+- [x] Remove JSON textarea for weights
+- [x] Update form submission to include weights object from state
+- [x] Update validation to check weights object instead of JSON string
+- [x] Update `createIndex` and `updateIndex` thunks to handle weights as object directly (no JSON parsing)
+
+#### Bug3: Not allow Unique, Expire when choose Text index
+- [x] Disable "Is Unique" radio buttons when `indexType === 'text'`
+- [x] Disable "Expire After Seconds" input when `indexType === 'text'`
+- [x] Add visual indication (grayed out) and helper text explaining why disabled
+- [x] Reset `unique` to `false` and `expireAfterSeconds` to `null` when switching to text index type
+
+#### Bug4: Haven't hide index `_id_` in both Backend and Frontend
+- [x] Filter out indexes where `name === '_id_'` from display in `src/pages/Indexes/IndexesList.js`
+- [x] Filter `_id_` index in `onToggleAll` function
+- [x] Filter `_id_` index in comparison displays (`CompareIndexesByDatabase.js`, `CompareIndexesByCollection.js`)
+
+### B. Implementation Details
+
+**Files Modified:**
+- `src/pages/Indexes/IndexesList.js` - Fixed delete call, added `_id_` filtering
+- `src/pages/Indexes/NewIndex.js` - Added weight inputs, disabled fields for text indexes
+- `src/slices/index/thunk.js` - Updated weights handling to use object instead of JSON string
+- `src/pages/Indexes/CompareIndexes/Components/CompareIndexesByDatabase.js` - Added `_id_` filtering
+- `src/pages/Indexes/CompareIndexes/Components/CompareIndexesByCollection.js` - Added `_id_` filtering
+
+### C. Testing
+
+- [x] Test index deletion works correctly
+- [x] Test weight inputs appear/disappear based on index type
+- [x] Test weights are correctly saved and loaded
+- [x] Test Unique and Expire fields are disabled for text indexes
+- [x] Test `_id_` index is not displayed in index list
+- [x] Test `_id_` index is not shown in comparisons
+
+### Notes
+
+- Weights are now managed per-field in the UI, making it much easier for users
+- Text indexes cannot have unique or TTL options (MongoDB constraint)
+- `_id_` index is MongoDB's default index and should not be managed through the UI
+
+---
+
 ## v0.4.0 - Missing from Backend
 
 ### Sync Options

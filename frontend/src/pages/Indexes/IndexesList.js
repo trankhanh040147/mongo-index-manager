@@ -143,7 +143,7 @@ const IndexesListComponent = ({}) => {
     };
 
     const onToggleAll = () => {
-        const ids = (indexLists?.records || []).map((r) => r.id);
+        const ids = (indexLists?.records || []).filter(r => r.name !== '_id_').map((r) => r.id);
         setSelectedIds((prev) => (prev.length === ids.length ? [] : ids));
     };
 
@@ -173,7 +173,7 @@ const IndexesListComponent = ({}) => {
     const handleDeleteClick = (index) => {
         // setSelectedIndex(index)
         console.log("Delete index with id:", index.id)
-        dispatch(deleteIndexList({data: index}));
+        dispatch(deleteIndexList({data: {id: index.id}}));
     };
 
     const handleCreateClick = () => {
@@ -239,7 +239,7 @@ const IndexesListComponent = ({}) => {
                                     <LoaderComponent/>
                                 ) : (
                                     <IndexTable
-                                        indexes={indexLists.records || []}
+                                        indexes={(indexLists.records || []).filter(idx => idx.name !== '_id_')}
                                         selectedIds={selectedIds}
                                         onToggleOne={onToggleOne}
                                         onToggleAll={onToggleAll}

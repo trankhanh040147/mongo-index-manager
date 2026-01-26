@@ -391,8 +391,11 @@ func (ctrl *controller) CreateCollection(ctx *fiber.Ctx) error {
 		Keys: []models.IndexKey{
 			{Field: "_id", Value: 1},
 		},
+		Options: models.IndexOption{
+			IsUnique: true,
+		},
 		IsText: false,
-		Name:   "_id_",
+		Name:   "_id",
 	}
 	index.KeySignature = index.GetKeySignature()
 	if err := indexQuery.UpsertOneByDatabaseIdAndCollection(requestBody.DatabaseId, requestBody.Collection, index); err != nil {

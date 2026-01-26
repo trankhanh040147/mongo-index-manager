@@ -62,12 +62,8 @@ export const createIndex = createAsyncThunk(
                 } else {
                     options.default_language = 'none';
                 }
-                if (values.weights && values.weights.trim() !== '') {
-                    try {
-                        options.weights = JSON.parse(values.weights);
-                    } catch (e) {
-                        throw new Error('Invalid weights JSON format');
-                    }
+                if (values.weights && typeof values.weights === 'object' && Object.keys(values.weights).length > 0) {
+                    options.weights = values.weights;
                 } else {
                     options.weights = null;
                 }
@@ -139,20 +135,14 @@ export const updateIndex = createAsyncThunk(
                 options.collation = null;
             }
 
-            // Add text index options if index type is text
             if (indexType === 'text') {
-                // v0.3.1: Send "none" instead of null when default language is not specified
                 if (values.defaultLanguage && values.defaultLanguage.trim() !== '') {
                     options.default_language = values.defaultLanguage;
                 } else {
                     options.default_language = 'none';
                 }
-                if (values.weights && values.weights.trim() !== '') {
-                    try {
-                        options.weights = JSON.parse(values.weights);
-                    } catch (e) {
-                        throw new Error('Invalid weights JSON format');
-                    }
+                if (values.weights && typeof values.weights === 'object' && Object.keys(values.weights).length > 0) {
+                    options.weights = values.weights;
                 } else {
                     options.weights = null;
                 }
