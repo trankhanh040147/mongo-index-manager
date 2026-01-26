@@ -233,7 +233,7 @@ export const GET_API_KEY = "/api-key";
 export const GET_DATABASE = "/databases";
 export const GET_DATABASES_LIST = "/databases/list";
 export const DELETE_DATABASE = "/databases";
-export const POST_DATABASE = "/databases/";
+export const POST_DATABASE = "/databases";
 export const PUT_DATABASE = "/databases";
 
 // Collections (database id passed in request body)

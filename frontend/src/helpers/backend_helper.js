@@ -388,17 +388,14 @@ export const putDatabase = (data) => api.put(url.PUT_DATABASE + '/' + data.id + 
 export const getDatabase = (id) => api.get(url.GET_DATABASE + '/' + id);
 export const getDatabaseListApi = (params) => api.create(url.GET_DATABASES_LIST, params);
 export const getDatabases = (data) => api.create(url.GET_DATABASES_LIST, data);
-// export const deleteDatabaseListApi = (database) => api.delete(url.DELETE_DATABASE, {headers: {database}});
 export const deleteDatabaseListApi = (id) => {
     return api.delete(`${url.DELETE_DATABASE}/${id}`);
 };
 
-// Collections (database id passed in request body)
 export const postCollection = (data) => api.create(url.POST_COLLECTION, data);
 export const putCollection = (data) => api.put(url.PUT_COLLECTION + '/' + data.id, data);
 export const getCollectionListApi = (params) => api.create(url.GET_COLLECTIONS_LIST, params);
 export const getCollections = (data) => api.create(url.GET_COLLECTIONS_LIST, data);
-// export const deleteCollectionListApi = (database) => api.delete(url.DELETE_COLLECTION, {headers: {database}});
 export const deleteCollectionListApi = (id) => {
     return api.delete(`${url.DELETE_COLLECTION}/${id}`);
 };

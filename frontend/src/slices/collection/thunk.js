@@ -9,6 +9,7 @@ import {getAccessToken, setAuthorization, getErrorMessage} from "../../helpers/a
 import {createAsyncThunk} from "@reduxjs/toolkit";
 import {toast} from "react-toastify";
 import {collectionActions} from "./reducer";
+import {CollectionListPaginationLimit} from "../../common/const";
 
 export const createCollection = createAsyncThunk(
     "collections/createCollection",
@@ -70,7 +71,7 @@ export const getCollectionList = createAsyncThunk("collections/getCollectionList
     try {
         setAuthorization(getAccessToken());
         if (!params.limit) {
-            params.limit = 5
+            params.limit = CollectionListPaginationLimit
         }
         const response = getCollectionListApi(params);
         const dataResponse = await response
