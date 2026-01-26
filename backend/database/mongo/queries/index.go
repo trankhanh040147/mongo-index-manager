@@ -38,6 +38,8 @@ type IndexQuery interface {
 	DeleteByDatabaseId(databaseId primitive.ObjectID) error
 	GetOneByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string, opts ...OptionsQuery) (index *models.Index, err error)
 	UpsertOneByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string, index models.Index) (err error)
+	UpdateCollectionByDatabaseIdAndCollection(databaseId primitive.ObjectID, oldCollection, newCollection string) error
+	DeleteByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string) error
 }
 
 type indexQuery struct {
@@ -460,6 +462,40 @@ func (q *indexQuery) UpsertOneByDatabaseIdAndCollection(databaseId primitive.Obj
 		},
 		options.Update().SetUpsert(true)); err != nil {
 		logger.Error().Err(err).Str("function", "UpsertOneByDatabaseIdAndCollection").Str("functionInline", "q.collection.UpdateOne").Msg("indexQuery")
+		return response.NewError(fiber.StatusInternalServerError)
+	}
+	return nil
+}
+
+func (q *indexQuery) UpdateCollectionByDatabaseIdAndCollection(databaseId primitive.ObjectID, oldCollection, newCollection string) error {
+	if oldCollection == newCollection {
+		return nil
+	}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	if _, err := q.collection.UpdateMany(ctx,
+		bson.M{
+			"database_id": databaseId,
+			"collection":  oldCollection,
+		},
+		bson.M{
+			"$set": bson.M{
+				"collection": newCollection,
+				"updated_at": time.Now(),
+			},
+		},
+	); err != nil {
+		logger.Error().Err(err).Str("function", "UpdateCollectionByDatabaseIdAndCollection").Str("functionInline", "q.collection.UpdateMany").Msg("indexQuery")
+		return response.NewError(fiber.StatusInternalServerError)
+	}
+	return nil
+}
+
+func (q *indexQuery) DeleteByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string) error {
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	if _, err := q.collection.DeleteMany(ctx, bson.M{"database_id": databaseId, "collection": collection}); err != nil {
+		logger.Error().Err(err).Str("function", "DeleteByDatabaseIdAndCollection").Str("functionInline", "q.collection.DeleteMany").Msg("indexQuery")
 		return response.NewError(fiber.StatusInternalServerError)
 	}
 	return nil

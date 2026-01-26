@@ -790,9 +790,15 @@ func (ctrl *controller) GetSyncStatusByDatabase(ctx *fiber.Ctx) error {
 		return response.New(ctx, response.Options{Code: fiber.StatusNotFound, Data: respErr.ErrResourceNotFound})
 	}
 	queryOption := queries.NewOptions()
+	queryOption.SetOnlyFields("db_name", "name")
+	database, err := queries.NewDatabase(ctx.Context()).GetById(databaseId, queryOption)
+	if err != nil {
+		return err
+	}
 	queryOption.AddSortKey(map[string]int{
 		"created_at": queries.SortTypeDesc,
 	})
+	queryOption.SetOnlyFields("created_at", "updated_at", "started_at", "completed_at", "error", "status", "collections", "progress", "_id", "database_id", "is_finished")
 	syncs, err := queries.NewSync(ctx.Context()).GetByDatabaseId(databaseId, queryOption)
 	if err != nil {
 		return err
@@ -808,6 +814,13 @@ func (ctrl *controller) GetSyncStatusByDatabase(ctx *fiber.Ctx) error {
 			StartedAt:   sync.StartedAt,
 			CompletedAt: sync.CompletedAt,
 			CreatedAt:   sync.CreatedAt,
+			UpdatedAt:   sync.UpdatedAt,
+			Collections: sync.Collections,
+			Database: serializers.IndexSyncStatusListResponseDatabase{
+				Id:     sync.DatabaseID,
+				Name:   database.Name,
+				DBName: database.DBName,
+			},
 		}
 	}
 	return response.NewArrayWithPagination(ctx, result, &request.Pagination{})

@@ -43,4 +43,6 @@ func (r *database) collection() {
 	router.Use(authMiddleware.AccessToken)
 	router.Post("/list", r.controller.ListCollections)
 	router.Post("/", r.controller.CreateCollection)
+	router.Put("/", r.controller.UpdateCollection)
+	router.Delete("/", r.controller.DeleteCollection)
 }

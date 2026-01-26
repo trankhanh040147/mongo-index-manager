@@ -350,14 +350,23 @@ type IndexSyncStatusResponse struct {
 }
 
 type IndexSyncStatusListResponseItem struct {
-	StartedAt   time.Time          `json:"started_at"`
-	CreatedAt   time.Time          `json:"created_at"`
-	CompletedAt *time.Time         `json:"completed_at,omitempty"`
-	Status      string             `json:"status"`
-	Error       string             `json:"error"`
-	Progress    int                `json:"progress"`
-	Id          primitive.ObjectID `json:"id"`
-	IsFinished  bool               `json:"is_finished"`
+	StartedAt   time.Time                           `json:"started_at"`
+	CreatedAt   time.Time                           `json:"created_at"`
+	UpdatedAt   time.Time                           `json:"updated_at"`
+	CompletedAt *time.Time                          `json:"completed_at,omitempty"`
+	Collections []string                            `json:"collections"`
+	Database    IndexSyncStatusListResponseDatabase `json:"database"`
+	Status      string                              `json:"status"`
+	Error       string                              `json:"error"`
+	Progress    int                                 `json:"progress"`
+	Id          primitive.ObjectID                  `json:"id"`
+	IsFinished  bool                                `json:"is_finished"`
+}
+
+type IndexSyncStatusListResponseDatabase struct {
+	Id     primitive.ObjectID `json:"id"`
+	Name   string             `json:"name"`
+	DBName string             `json:"db_name"`
 }
 
 type IndexSyncFromDatabaseValidate struct {

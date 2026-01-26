@@ -15,7 +15,7 @@ type Sync struct {
 	Status      string             `bson:"status"`
 	Collections []string           `bson:"collections"`
 	Progress    int                `bson:"progress"`
-	Id          primitive.ObjectID `bson:"id,omitempty"`
+	Id          primitive.ObjectID `bson:"_id,omitempty"`
 	DatabaseID  primitive.ObjectID `bson:"database_id"`
 	IsFinished  bool               `bson:"is_finished"`
 }

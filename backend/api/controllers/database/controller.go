@@ -27,6 +27,7 @@ type Controller interface {
 	ListCollections(ctx *fiber.Ctx) error
 	CreateCollection(ctx *fiber.Ctx) error
 	UpdateCollection(ctx *fiber.Ctx) error
+	DeleteCollection(ctx *fiber.Ctx) error
 }
 
 type controller struct {
@@ -373,7 +374,7 @@ func (ctrl *controller) CreateCollection(ctx *fiber.Ctx) error {
 		return err
 	}
 	queryOption := queries.NewOptions()
-	queryOption.SetOnlyFields("uri", "db_name", "_id")
+	queryOption.SetOnlyFields("_id")
 	if _, err := queries.NewDatabase(ctx.Context()).GetById(requestBody.DatabaseId, queryOption); err != nil {
 		return err
 	}
@@ -408,7 +409,7 @@ func (ctrl *controller) CreateCollection(ctx *fiber.Ctx) error {
 }
 
 func (ctrl *controller) UpdateCollection(ctx *fiber.Ctx) error {
-	var requestBody serializers.DatabaseCreateCollectionBodyValidate
+	var requestBody serializers.DatabaseUpdateCollectionBodyValidate
 	if err := ctx.BodyParser(&requestBody); err != nil {
 		return response.New(ctx, response.Options{Code: fiber.StatusBadRequest, Data: respErr.ErrFieldWrongType})
 	}
@@ -416,34 +417,40 @@ func (ctrl *controller) UpdateCollection(ctx *fiber.Ctx) error {
 		return err
 	}
 	queryOption := queries.NewOptions()
-	queryOption.SetOnlyFields("uri", "db_name", "_id")
+	queryOption.SetOnlyFields("_id")
 	if _, err := queries.NewDatabase(ctx.Context()).GetById(requestBody.DatabaseId, queryOption); err != nil {
 		return err
 	}
-	indexQuery := queries.NewIndex(ctx.Context())
-	queryOption.SetOnlyFields("_id")
-	if _, err := indexQuery.GetOneByDatabaseIdAndCollection(requestBody.DatabaseId, requestBody.Collection, queryOption); err != nil {
-		if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
-			return err
-		}
-	} else {
-		return response.New(ctx, response.Options{Code: fiber.StatusConflict, Data: respErr.ErrResourceConflict})
+	if requestBody.Collection == requestBody.NewCollection {
+		return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
 	}
-	index := models.Index{
-		DatabaseId: requestBody.DatabaseId,
-		Collection: requestBody.Collection,
-		Keys:       models.IndexDefaultKeys,
-		Options:    models.IndexDefaultOptions,
-		IsText:     false,
-		Name:       models.IndexDefaultName,
-		IsDefault:  true,
-	}
-	index.KeySignature = index.GetKeySignature()
-	if err := indexQuery.UpsertOneByDatabaseIdAndCollection(requestBody.DatabaseId, requestBody.Collection, index); err != nil {
+	if err := queries.NewIndex(ctx.Context()).UpdateCollectionByDatabaseIdAndCollection(requestBody.DatabaseId, requestBody.Collection, requestBody.NewCollection); err != nil {
 		return err
 	}
 	return response.New(ctx, response.Options{
-		Code: fiber.StatusCreated,
+		Data: fiber.Map{
+			"success": true,
+		},
+	})
+}
+
+func (ctrl *controller) DeleteCollection(ctx *fiber.Ctx) error {
+	var requestBody serializers.DatabaseDeleteCollectionBodyValidate
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return response.New(ctx, response.Options{Code: fiber.StatusBadRequest, Data: respErr.ErrFieldWrongType})
+	}
+	if err := requestBody.Validate(); err != nil {
+		return err
+	}
+	queryOption := queries.NewOptions()
+	queryOption.SetOnlyFields("_id")
+	if _, err := queries.NewDatabase(ctx.Context()).GetById(requestBody.DatabaseId, queryOption); err != nil {
+		return err
+	}
+	if err := queries.NewIndex(ctx.Context()).DeleteByDatabaseIdAndCollection(requestBody.DatabaseId, requestBody.Collection); err != nil {
+		return err
+	}
+	return response.New(ctx, response.Options{
 		Data: fiber.Map{
 			"success": true,
 		},

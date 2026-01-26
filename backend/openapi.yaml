@@ -124,7 +124,7 @@ components:
           example: 0
         data:
           type: array
-          items: {}
+          items: { }
         extra:
           $ref: '#/components/schemas/PaginationMetadata'
       required:
@@ -566,6 +566,37 @@ components:
         - error_code
         - data
 
+    DatabaseUpdateCollectionRequest:
+      type: object
+      properties:
+        database_id:
+          $ref: '#/components/schemas/ObjectID'
+        collection:
+          type: string
+        new_collection:
+          type: string
+      required:
+        - database_id
+        - collection
+        - new_collection
+
+    DatabaseUpdateCollectionResponse:
+      $ref: '#/components/schemas/DatabaseUpdateResponse'
+
+    DatabaseDeleteCollectionRequest:
+      type: object
+      properties:
+        database_id:
+          $ref: '#/components/schemas/ObjectID'
+        collection:
+          type: string
+      required:
+        - database_id
+        - collection
+
+    DatabaseDeleteCollectionResponse:
+      $ref: '#/components/schemas/DatabaseUpdateResponse'
+
     # Index Schemas
     IndexKey:
       type: object
@@ -575,7 +606,7 @@ components:
           description: Field name (cannot be '_id')
         value:
           type: integer
-          enum: [1, -1]
+          enum: [ 1, -1 ]
           description: "1 for ascending, -1 for descending"
       required:
         - field
@@ -978,6 +1009,16 @@ components:
         - error_code
         - data
 
+    IndexSyncStatusListResponseDatabase:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/ObjectID'
+        name:
+          type: string
+        db_name:
+          type: string
+
     IndexSyncStatusListItem:
       type: object
       properties:
@@ -992,6 +1033,12 @@ components:
         error:
           type: string
           nullable: true
+        collections:
+          type: array
+          items:
+            type: string
+        database:
+          $ref: '#/components/schemas/IndexSyncStatusListResponseDatabase'
         is_finished:
           type: boolean
         started_at:
@@ -1000,6 +1047,8 @@ components:
           $ref: '#/components/schemas/DateTime'
           nullable: true
         created_at:
+          $ref: '#/components/schemas/DateTime'
+        updated_at:
           $ref: '#/components/schemas/DateTime'
 
     IndexSyncStatusListResponse:
@@ -1088,7 +1137,7 @@ paths:
       summary: Register a new user account
       description: Create a new user account with username, email, and password
       operationId: register
-      security: []
+      security: [ ]
       requestBody:
         required: true
         content:
@@ -1114,7 +1163,7 @@ paths:
       summary: Authenticate user and get tokens
       description: Login with username/email and password to receive access and refresh tokens
       operationId: login
-      security: []
+      security: [ ]
       requestBody:
         required: true
         content:
@@ -1141,7 +1190,7 @@ paths:
       description: Obtain new access and refresh tokens using a valid refresh token
       operationId: refreshToken
       security:
-        - refreshTokenAuth: []
+        - refreshTokenAuth: [ ]
       responses:
         '200':
           description: Tokens refreshed successfully
@@ -1160,7 +1209,7 @@ paths:
       description: Get the authenticated user's profile information
       operationId: getProfile
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       responses:
         '200':
           description: Profile retrieved successfully
@@ -1178,7 +1227,7 @@ paths:
       description: Update the authenticated user's profile information
       operationId: updateProfile
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       requestBody:
         required: true
         content:
@@ -1206,7 +1255,7 @@ paths:
       description: Create a new database connection configuration
       operationId: createDatabase
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       requestBody:
         required: true
         content:
@@ -1237,7 +1286,7 @@ paths:
       description: Get database details by ID
       operationId: getDatabase
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       parameters:
         - name: id
           in: path
@@ -1265,7 +1314,7 @@ paths:
       description: Get a paginated list of databases with optional search
       operationId: listDatabases
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       requestBody:
         required: true
         content:
@@ -1292,7 +1341,7 @@ paths:
       description: Update database connection configuration
       operationId: updateDatabase
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       parameters:
         - name: id
           in: path
@@ -1331,7 +1380,7 @@ paths:
       description: Delete a database configuration and all associated indexes
       operationId: deleteDatabase
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       parameters:
         - name: id
           in: path
@@ -1359,7 +1408,7 @@ paths:
       description: Get a paginated list of collections for a database with index counts
       operationId: listCollections
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       requestBody:
         required: true
         content:
@@ -1388,7 +1437,7 @@ paths:
       description: Create a new MongoDB collection in the specified database
       operationId: createCollection
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       requestBody:
         required: true
         content:
@@ -1413,6 +1462,62 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+    put:
+      tags:
+        - Database
+      summary: Update a collection
+      description: Rename a collection in the specified database
+      operationId: updateCollection
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatabaseUpdateCollectionRequest'
+      responses:
+        '200':
+          description: Collection updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseUpdateCollectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Database
+      summary: Delete a collection
+      description: Delete a collection and its indexes from the specified database
+      operationId: deleteCollection
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatabaseDeleteCollectionRequest'
+      responses:
+        '200':
+          description: Collection deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseDeleteCollectionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   # Index Endpoints
   /indexes/:
     post:
@@ -1422,7 +1527,7 @@ paths:
       description: Create a new index definition
       operationId: createIndex
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       requestBody:
         required: true
         content:
@@ -1453,7 +1558,7 @@ paths:
       description: Get index details by ID
       operationId: getIndex
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       parameters:
         - name: id
           in: path
@@ -1480,7 +1585,7 @@ paths:
       description: Update an existing index definition
       operationId: updateIndex
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       parameters:
         - name: id
           in: path
@@ -1517,7 +1622,7 @@ paths:
       description: Delete an index definition
       operationId: deleteIndex
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       parameters:
         - name: id
           in: path
@@ -1543,7 +1648,7 @@ paths:
       description: Get a paginated list of indexes for a specific collection
       operationId: listIndexesByCollection
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       requestBody:
         required: true
         content:
@@ -1570,7 +1675,7 @@ paths:
       description: Compare indexes in the manager with indexes in the actual MongoDB database for specific collections
       operationId: compareIndexesByCollections
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       requestBody:
         required: true
         content:
@@ -1601,7 +1706,7 @@ paths:
       description: Compare all indexes in the manager with indexes in the actual MongoDB database
       operationId: compareIndexesByDatabase
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       requestBody:
         required: true
         content:
@@ -1634,7 +1739,7 @@ paths:
         This is an asynchronous operation that runs in the background. Creates missing indexes and removes redundant indexes.
       operationId: syncIndexesByCollections
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       requestBody:
         required: true
         content:
@@ -1671,7 +1776,7 @@ paths:
         This is an asynchronous operation that runs in the background. Compares all collections that have indexes in the manager.
       operationId: syncIndexesByDatabase
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       requestBody:
         required: true
         content:
@@ -1708,7 +1813,7 @@ paths:
         This operation synchronizes indexes from the database to the manager (opposite direction of sync-by-collections).
       operationId: syncIndexesFromDatabase
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       requestBody:
         required: true
         content:
@@ -1739,7 +1844,7 @@ paths:
       description: Get the status of a specific sync operation by its sync ID
       operationId: getSyncStatus
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       parameters:
         - name: sync_id
           in: path
@@ -1767,7 +1872,7 @@ paths:
       description: Get a list of all sync operations for a specific database, ordered by creation time (descending)
       operationId: getSyncStatusByDatabase
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       parameters:
         - name: database_id
           in: path
