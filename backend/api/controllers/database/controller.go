@@ -26,6 +26,7 @@ type Controller interface {
 	Delete(ctx *fiber.Ctx) error
 	ListCollections(ctx *fiber.Ctx) error
 	CreateCollection(ctx *fiber.Ctx) error
+	UpdateCollection(ctx *fiber.Ctx) error
 }
 
 type controller struct {
@@ -388,14 +389,54 @@ func (ctrl *controller) CreateCollection(ctx *fiber.Ctx) error {
 	index := models.Index{
 		DatabaseId: requestBody.DatabaseId,
 		Collection: requestBody.Collection,
-		Keys: []models.IndexKey{
-			{Field: "_id", Value: 1},
+		Keys:       models.IndexDefaultKeys,
+		Options:    models.IndexDefaultOptions,
+		IsText:     false,
+		Name:       models.IndexDefaultName,
+		IsDefault:  true,
+	}
+	index.KeySignature = index.GetKeySignature()
+	if err := indexQuery.UpsertOneByDatabaseIdAndCollection(requestBody.DatabaseId, requestBody.Collection, index); err != nil {
+		return err
+	}
+	return response.New(ctx, response.Options{
+		Code: fiber.StatusCreated,
+		Data: fiber.Map{
+			"success": true,
 		},
-		Options: models.IndexOption{
-			IsUnique: true,
-		},
-		IsText: false,
-		Name:   "_id",
+	})
+}
+
+func (ctrl *controller) UpdateCollection(ctx *fiber.Ctx) error {
+	var requestBody serializers.DatabaseCreateCollectionBodyValidate
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return response.New(ctx, response.Options{Code: fiber.StatusBadRequest, Data: respErr.ErrFieldWrongType})
+	}
+	if err := requestBody.Validate(); err != nil {
+		return err
+	}
+	queryOption := queries.NewOptions()
+	queryOption.SetOnlyFields("uri", "db_name", "_id")
+	if _, err := queries.NewDatabase(ctx.Context()).GetById(requestBody.DatabaseId, queryOption); err != nil {
+		return err
+	}
+	indexQuery := queries.NewIndex(ctx.Context())
+	queryOption.SetOnlyFields("_id")
+	if _, err := indexQuery.GetOneByDatabaseIdAndCollection(requestBody.DatabaseId, requestBody.Collection, queryOption); err != nil {
+		if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
+			return err
+		}
+	} else {
+		return response.New(ctx, response.Options{Code: fiber.StatusConflict, Data: respErr.ErrResourceConflict})
+	}
+	index := models.Index{
+		DatabaseId: requestBody.DatabaseId,
+		Collection: requestBody.Collection,
+		Keys:       models.IndexDefaultKeys,
+		Options:    models.IndexDefaultOptions,
+		IsText:     false,
+		Name:       models.IndexDefaultName,
+		IsDefault:  true,
 	}
 	index.KeySignature = index.GetKeySignature()
 	if err := indexQuery.UpsertOneByDatabaseIdAndCollection(requestBody.DatabaseId, requestBody.Collection, index); err != nil {

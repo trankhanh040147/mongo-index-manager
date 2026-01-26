@@ -206,7 +206,7 @@ func (ctrl *controller) ListByCollection(ctx *fiber.Ctx) error {
 	queryOption.AddSortKey(map[string]int{
 		"_id": queries.SortTypeDesc,
 	})
-	queryOption.SetOnlyFields("created_at", "updated_at", "options", "collection", "name", "key_signature", "keys", "_id", "database_id")
+	queryOption.SetOnlyFields("created_at", "updated_at", "options", "collection", "name", "key_signature", "keys", "_id", "database_id", "is_default")
 	if requestBody.Query != "" {
 		if id, _ := primitive.ObjectIDFromHex(requestBody.Query); !id.IsZero() {
 			index, err := indexQuery.GetById(id, queryOption)
@@ -299,6 +299,7 @@ func (ctrl *controller) ListByCollection(ctx *fiber.Ctx) error {
 		result[i].Keys = keys
 		result[i].Id = index.Id
 		result[i].DatabaseId = index.DatabaseId
+		result[i].IsDefault = index.IsDefault
 	}
 	pagination.SetTotal(<-totalChan)
 	return response.NewArrayWithPagination(ctx, result, pagination)

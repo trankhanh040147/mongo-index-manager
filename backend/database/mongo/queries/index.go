@@ -2,12 +2,13 @@ package queries
 
 import (
 	"context"
-	"doctor-manager-api/common/response"
-	"doctor-manager-api/database/mongo"
-	"doctor-manager-api/database/mongo/models"
 	"errors"
 	"regexp"
 	"time"
+
+	"doctor-manager-api/common/response"
+	"doctor-manager-api/database/mongo"
+	"doctor-manager-api/database/mongo/models"
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
@@ -443,6 +444,7 @@ func (q *indexQuery) UpsertOneByDatabaseIdAndCollection(databaseId primitive.Obj
 			"database_id":   databaseId,
 			"collection":    collection,
 			"key_signature": index.KeySignature,
+			"is_default":    index.IsDefault,
 		},
 		bson.M{
 			"$set": bson.M{

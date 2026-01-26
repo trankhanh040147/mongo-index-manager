@@ -153,6 +153,7 @@ type IndexListByCollectionResponseItem struct {
 	Keys         []IndexListByCollectionResponseKey  `json:"keys"`
 	Id           primitive.ObjectID                  `json:"id"`
 	DatabaseId   primitive.ObjectID                  `json:"database_id"`
+	IsDefault    bool                                `json:"is_default"`
 }
 
 type IndexListByCollectionResponseOption struct {

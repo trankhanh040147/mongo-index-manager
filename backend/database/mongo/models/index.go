@@ -8,6 +8,19 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+const (
+	IndexDefaultName = "_id_"
+)
+
+var (
+	IndexDefaultKeys = []IndexKey{
+		{Field: "_id", Value: 1},
+	}
+	IndexDefaultOptions = IndexOption{
+		IsUnique: true,
+	}
+)
+
 type Index struct {
 	CreatedAt    time.Time          `bson:"created_at"`
 	UpdatedAt    time.Time          `bson:"updated_at"`
@@ -17,6 +30,7 @@ type Index struct {
 	KeySignature string             `bson:"key_signature"`
 	Keys         []IndexKey         `bson:"keys"`
 	IsText       bool               `bson:"is_text"`
+	IsDefault    bool               `bson:"is_default"`
 	DatabaseId   primitive.ObjectID `bson:"database_id"`
 	Id           primitive.ObjectID `bson:"_id,omitempty"`
 }

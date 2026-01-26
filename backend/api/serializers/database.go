@@ -109,3 +109,17 @@ func (v *DatabaseCreateCollectionBodyValidate) Validate() error {
 	}
 	return nil
 }
+
+type DatabaseUpdateCollectionBodyValidate struct {
+	Collection    string             `json:"collection" validate:"required"`
+	NewCollection string             `json:"new_collection" validate:"required"`
+	DatabaseId    primitive.ObjectID `json:"database_id" validate:"required"`
+}
+
+func (v *DatabaseUpdateCollectionBodyValidate) Validate() error {
+	validateEngine := validator.GetValidateEngine()
+	if err := validateEngine.Struct(v); err != nil {
+		return response.NewError(fiber.StatusBadRequest, response.ErrorOptions{Data: validator.ParseValidateError(err)})
+	}
+	return nil
+}
