@@ -40,6 +40,10 @@ type IndexQuery interface {
 	UpsertOneByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string, index models.Index) (err error)
 	UpdateCollectionByDatabaseIdAndCollection(databaseId primitive.ObjectID, oldCollection, newCollection string) error
 	DeleteByDatabaseIdAndCollection(databaseId primitive.ObjectID, collection string) error
+	GetByDatabaseIdCollectionAndName(databaseId primitive.ObjectID, collection, name string, opts ...OptionsQuery) (index *models.Index, err error)
+	GetByDatabaseIdCollectionAndKeySignature(databaseId primitive.ObjectID, collection, keySignature string, opts ...OptionsQuery) (index *models.Index, err error)
+	GetByDatabaseIdCollectionsAndIsDefault(databaseId primitive.ObjectID, collections []string, isDefault bool, opts ...OptionsQuery) (indexes []models.Index, err error)
+	GetByDatabaseIdAndIsDefault(databaseId primitive.ObjectID, isDefault bool, opts ...OptionsQuery) (indexes []models.Index, err error)
 }
 
 type indexQuery struct {
@@ -86,32 +90,6 @@ func (q *indexQuery) GetById(id primitive.ObjectID, opts ...OptionsQuery) (*mode
 			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Index not found"})
 		}
 		logger.Error().Err(err).Str("function", "GetById").Str("functionInline", "q.collection.FindOne").Msg("indexQuery")
-		return nil, response.NewError(fiber.StatusInternalServerError)
-	}
-	return &data, nil
-}
-
-func (q *indexQuery) GetByDatabaseIdCollectionWithNameOrSignature(databaseId primitive.ObjectID, collection string, keySignature, name string, opts ...OptionsQuery) (*models.Index, error) {
-	opt := NewOptions()
-	if len(opts) > 0 {
-		opt = opts[0]
-	}
-	var data models.Index
-	optFind := &options.FindOneOptions{Projection: opt.QueryOnlyField()}
-	ctx, cancel := timeoutFunc(q.context)
-	defer cancel()
-	if err := q.collection.FindOne(ctx, bson.M{
-		"database_id": databaseId,
-		"collection":  collection,
-		"$or": []bson.M{
-			{"key_signature": keySignature},
-			{"name": name},
-		},
-	}, optFind).Decode(&data); err != nil {
-		if errors.Is(err, mongoDriver.ErrNoDocuments) {
-			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Index not found"})
-		}
-		logger.Error().Err(err).Str("function", "GetByDatabaseIdCollectionWithNameOrSignature").Str("functionInline", "q.collection.FindOne").Msg("indexQuery")
 		return nil, response.NewError(fiber.StatusInternalServerError)
 	}
 	return &data, nil
@@ -499,4 +477,122 @@ func (q *indexQuery) DeleteByDatabaseIdAndCollection(databaseId primitive.Object
 		return response.NewError(fiber.StatusInternalServerError)
 	}
 	return nil
+}
+
+func (q *indexQuery) GetByDatabaseIdCollectionWithNameOrSignature(databaseId primitive.ObjectID, collection string, keySignature, name string, opts ...OptionsQuery) (*models.Index, error) {
+	opt := NewOptions()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	var data models.Index
+	optFind := &options.FindOneOptions{Projection: opt.QueryOnlyField()}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	if err := q.collection.FindOne(ctx, bson.M{
+		"database_id": databaseId,
+		"collection":  collection,
+		"$or": []bson.M{
+			{"key_signature": keySignature},
+			{"name": name},
+		},
+	}, optFind).Decode(&data); err != nil {
+		if errors.Is(err, mongoDriver.ErrNoDocuments) {
+			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Index not found"})
+		}
+		logger.Error().Err(err).Str("function", "GetByDatabaseIdCollectionWithNameOrSignature").Str("functionInline", "q.collection.FindOne").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	return &data, nil
+}
+
+func (q *indexQuery) GetByDatabaseIdCollectionAndName(databaseId primitive.ObjectID, collection string, name string, opts ...OptionsQuery) (*models.Index, error) {
+	opt := NewOptions()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	var data models.Index
+	optFind := &options.FindOneOptions{Projection: opt.QueryOnlyField()}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	if err := q.collection.FindOne(ctx, bson.M{
+		"database_id": databaseId,
+		"collection":  collection,
+		"name":        name,
+	}, optFind).Decode(&data); err != nil {
+		if errors.Is(err, mongoDriver.ErrNoDocuments) {
+			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Index not found"})
+		}
+		logger.Error().Err(err).Str("function", "GetByDatabaseIdCollectionAndName").Str("functionInline", "q.collection.FindOne").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	return &data, nil
+}
+
+func (q *indexQuery) GetByDatabaseIdCollectionAndKeySignature(databaseId primitive.ObjectID, collection, keySignature string, opts ...OptionsQuery) (*models.Index, error) {
+	opt := NewOptions()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	var data models.Index
+	optFind := &options.FindOneOptions{Projection: opt.QueryOnlyField()}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	if err := q.collection.FindOne(ctx, bson.M{
+		"database_id":   databaseId,
+		"collection":    collection,
+		"key_signature": keySignature,
+	}, optFind).Decode(&data); err != nil {
+		if errors.Is(err, mongoDriver.ErrNoDocuments) {
+			return nil, response.NewError(fiber.StatusNotFound, response.ErrorOptions{Data: "Index not found"})
+		}
+		logger.Error().Err(err).Str("function", "GetByDatabaseIdCollectionAndKeySignature").Str("functionInline", "q.collection.FindOne").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	return &data, nil
+}
+
+func (q *indexQuery) GetByDatabaseIdCollectionsAndIsDefault(databaseId primitive.ObjectID, collections []string, isDefault bool, opts ...OptionsQuery) ([]models.Index, error) {
+	opt := NewOptions()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	optFind := &options.FindOptions{
+		Projection: opt.QueryOnlyField(),
+	}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	cursor, err := q.collection.Find(ctx, bson.M{"database_id": databaseId, "collection": bson.M{"$in": collections}, "is_default": isDefault}, optFind)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "GetByDatabaseIdCollectionsAndIsDefault").Str("functionInline", "q.collection.Find").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	data := make([]models.Index, 0)
+	if err = cursor.All(ctx, &data); err != nil {
+		logger.Error().Err(err).Str("function", "GetByDatabaseIdCollectionsAndIsDefault").Str("functionInline", "cursor.All").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	return data, nil
+}
+
+func (q *indexQuery) GetByDatabaseIdAndIsDefault(databaseId primitive.ObjectID, isDefault bool, opts ...OptionsQuery) ([]models.Index, error) {
+	opt := NewOptions()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+	optFind := &options.FindOptions{
+		Projection: opt.QueryOnlyField(),
+	}
+	ctx, cancel := timeoutFunc(q.context)
+	defer cancel()
+	cursor, err := q.collection.Find(ctx, bson.M{"database_id": databaseId, "is_default": isDefault}, optFind)
+	if err != nil {
+		logger.Error().Err(err).Str("function", "GetByDatabaseIdAndIsDefault").Str("functionInline", "q.collection.Find").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	data := make([]models.Index, 0)
+	if err = cursor.All(ctx, &data); err != nil {
+		logger.Error().Err(err).Str("function", "GetByDatabaseIdAndIsDefault").Str("functionInline", "cursor.All").Msg("indexQuery")
+		return nil, response.NewError(fiber.StatusInternalServerError)
+	}
+	return data, nil
 }

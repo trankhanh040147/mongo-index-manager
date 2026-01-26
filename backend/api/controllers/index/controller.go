@@ -386,13 +386,22 @@ func (ctrl *controller) Update(ctx *fiber.Ctx) error {
 		indexUpdate.Name = indexUpdate.KeySignature
 	}
 	queryOption.SetOnlyFields("_id")
-	if index.Name != indexUpdate.Name || index.KeySignature != indexUpdate.KeySignature {
-		if _, err = indexQuery.GetByDatabaseIdCollectionWithNameOrSignature(index.DatabaseId, index.Collection, indexUpdate.Name, indexUpdate.KeySignature, queryOption); err != nil {
+	if index.Name != indexUpdate.Name {
+		if _, err = indexQuery.GetByDatabaseIdCollectionAndName(index.DatabaseId, index.Collection, indexUpdate.Name, queryOption); err != nil {
 			if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
 				return err
 			}
 		} else {
-			return response.NewError(fiber.StatusConflict, response.ErrorOptions{Data: respErr.ErrResourceConflict})
+			return response.NewError(fiber.StatusConflict, response.ErrorOptions{Data: "Name existed"})
+		}
+	}
+	if index.KeySignature != indexUpdate.KeySignature {
+		if _, err = indexQuery.GetByDatabaseIdCollectionAndKeySignature(index.DatabaseId, index.Collection, indexUpdate.KeySignature, queryOption); err != nil {
+			if e := new(response.Error); errors.As(err, &e) && e.Code != fiber.StatusNotFound {
+				return err
+			}
+		} else {
+			return response.NewError(fiber.StatusConflict, response.ErrorOptions{Data: "Signature existed"})
 		}
 	}
 	if requestBody.Options.IsUnique && !isSameKeyFields {
@@ -708,7 +717,7 @@ func (ctrl *controller) SyncByCollections(ctx *fiber.Ctx) error {
 
 	indexQuery := queries.NewIndex(ctx.Context())
 	queryOption.SetOnlyFields("options", "keys", "key_signature", "collection", "name")
-	indexes, err := indexQuery.GetByDatabaseIdAndCollections(requestBody.DatabaseId, requestBody.Collections, queryOption)
+	indexes, err := indexQuery.GetByDatabaseIdCollectionsAndIsDefault(requestBody.DatabaseId, requestBody.Collections, false, queryOption)
 	if err != nil {
 		return err
 	}
@@ -729,6 +738,9 @@ func (ctrl *controller) SyncByCollections(ctx *fiber.Ctx) error {
 	if err != nil {
 		logger.Error().Err(err).Str("function", "CompareByCollections").Str("functionInline", "dbClient.GetIndexesByDbNameAndCollections").Msg("index-controller")
 		return response.New(ctx, response.Options{Code: fiber.StatusPreconditionFailed, Data: "Can't get indexes from database"})
+	}
+	if len(clientIndexes)+len(indexes) == 0 {
+		return response.New(ctx, response.Options{Data: fiber.Map{"success": true}})
 	}
 	sync, err := syncQuery.CreateOne(models.Sync{
 		Error:       "",
@@ -955,9 +967,8 @@ func (ctrl *controller) SyncByDatabase(ctx *fiber.Ctx) error {
 	} else {
 		return response.New(ctx, response.Options{Code: fiber.StatusConflict, Data: respErr.ErrResourceConflict})
 	}
-	indexQuery := queries.NewIndex(ctx.Context())
 	queryOption.SetOnlyFields("options", "keys", "key_signature", "collection", "name")
-	indexes, err := indexQuery.GetByDatabaseId(requestBody.DatabaseId, queryOption)
+	indexes, err := queries.NewIndex(ctx.Context()).GetByDatabaseIdAndIsDefault(requestBody.DatabaseId, false, queryOption)
 	if err != nil {
 		return err
 	}

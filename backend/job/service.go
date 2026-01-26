@@ -59,7 +59,14 @@ func handleSyncIndexByCollection(ctx context.Context, t *taskqueue.Task) error {
 			keys := make([]mongodb.IndexKey, len(index.Keys))
 			for i, key := range index.Keys {
 				keys[i].Field = key.Field
-				keys[i].Value = key.Value
+				value := key.Value
+				switch v := value.(type) {
+				case float64:
+					value = int32(v)
+				case int:
+					value = int32(v)
+				}
+				keys[i].Value = value
 			}
 			var collation *mongodb.Collation
 			if index.Options.Collation != nil {
