@@ -1,5 +1,5 @@
 {
-  "name": "drmanager",
+  "name": "sigpro-doctor-manager-web",
   "version": "3.5.0",
   "private": true,
   "dependencies": {

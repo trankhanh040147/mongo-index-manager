@@ -1,759 +1,1135 @@
 {
-  "info": {
-    "name": "DRManager",
-    "description": "MongoDB Index Manager API - Complete API collection for managing databases and indexes",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "item": [
-    {
-      "name": "Authentication",
-      "item": [
-        {
-          "name": "Register",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/auth/register",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "auth", "register"]
-            },
-            "description": "Create a new user account"
-          }
-        },
-        {
-          "name": "Login",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 200) {",
-                  "    const jsonData = pm.response.json();",
-                  "    if (jsonData.data && jsonData.data.access_token) {",
-                  "        pm.collectionVariables.set('access_token', jsonData.data.access_token);",
-                  "        pm.collectionVariables.set('refresh_token', jsonData.data.refresh_token);",
-                  "        console.log('Tokens saved to collection variables');",
-                  "    }",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"identity\": \"testuser\",\n  \"password\": \"password123\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/auth/login",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "auth", "login"]
-            },
-            "description": "Authenticate user and receive access and refresh tokens"
-          }
-        },
-        {
-          "name": "Refresh Token",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 200) {",
-                  "    const jsonData = pm.response.json();",
-                  "    if (jsonData.data && jsonData.data.access_token) {",
-                  "        pm.collectionVariables.set('access_token', jsonData.data.access_token);",
-                  "        pm.collectionVariables.set('refresh_token', jsonData.data.refresh_token);",
-                  "        console.log('Tokens refreshed and saved to collection variables');",
-                  "    }",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{refresh_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/auth/refresh-token",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "auth", "refresh-token"]
-            },
-            "description": "Obtain new access and refresh tokens using a valid refresh token"
-          }
-        },
-        {
-          "name": "Get Profile",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/auth/profile",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "auth", "profile"]
-            },
-            "description": "Get the authenticated user's profile information"
-          }
-        },
-        {
-          "name": "Update Profile",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"avatar\": \"https://example.com/avatar.jpg\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/auth/profile",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "auth", "profile"]
-            },
-            "description": "Update the authenticated user's profile information"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Databases",
-      "item": [
-        {
-          "name": "Create Database",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 201) {",
-                  "    const jsonData = pm.response.json();",
-                  "    if (jsonData.data && jsonData.data.id) {",
-                  "        pm.collectionVariables.set('database_id', jsonData.data.id);",
-                  "        console.log('Database ID saved to collection variable: ' + jsonData.data.id);",
-                  "    }",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Production DB\",\n  \"description\": \"Main production database\",\n  \"uri\": \"mongodb://localhost:27017\",\n  \"db_name\": \"myapp\",\n  \"is_test_connection\": true,\n  \"is_sync_index\": false\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/databases/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "databases", ""]
-            },
-            "description": "Create a new database connection configuration"
-          }
-        },
-        {
-          "name": "Get Database",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/databases/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "databases", ":id"],
-              "variable": [
-                {
-                  "key": "id",
-                  "value": "{{database_id}}",
-                  "description": "Database ObjectID"
-                }
-              ]
-            },
-            "description": "Get database details by ID"
-          }
-        },
-        {
-          "name": "List Databases",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"query\": \"\",\n  \"page\": 1,\n  \"limit\": 10\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/databases/list",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "databases", "list"]
-            },
-            "description": "Get a paginated list of databases with optional search"
-          }
-        },
-        {
-          "name": "Update Database",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Production DB Updated\",\n  \"description\": \"Updated description\",\n  \"uri\": \"mongodb://localhost:27017\",\n  \"db_name\": \"myapp\",\n  \"is_test_connection\": false\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/databases/:id/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "databases", ":id", ""],
-              "variable": [
-                {
-                  "key": "id",
-                  "value": "{{database_id}}",
-                  "description": "Database ObjectID"
-                }
-              ]
-            },
-            "description": "Update database connection configuration"
-          }
-        },
-        {
-          "name": "Delete Database",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/databases/:id/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "databases", ":id", ""],
-              "variable": [
-                {
-                  "key": "id",
-                  "value": "{{database_id}}",
-                  "description": "Database ObjectID"
-                }
-              ]
-            },
-            "description": "Delete a database configuration and all associated indexes"
-          }
-        },
-        {
-          "name": "List Collections",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"database_id\": \"{{database_id}}\",\n  \"query\": \"\",\n  \"page\": 1,\n  \"limit\": 20\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/databases/collections/list",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "databases", "collections", "list"]
-            },
-            "description": "Get a paginated list of collections for a database with index counts"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Indexes",
-      "item": [
-        {
-          "name": "Create Index",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 201) {",
-                  "    const jsonData = pm.response.json();",
-                  "    if (jsonData.data && jsonData.data.id) {",
-                  "        pm.collectionVariables.set('index_id', jsonData.data.id);",
-                  "        console.log('Index ID saved to collection variable: ' + jsonData.data.id);",
-                  "    }",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"database_id\": \"{{database_id}}\",\n  \"collection\": \"users\",\n  \"name\": \"idx_email\",\n  \"options\": {\n    \"is_unique\": true,\n    \"expire_after_seconds\": null\n  },\n  \"keys\": [\n    {\n      \"field\": \"email\",\n      \"value\": 1\n    }\n  ]\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "indexes", ""]
-            },
-            "description": "Create a new index definition"
-          }
-        },
-        {
-          "name": "Get Index",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "indexes", ":id"],
-              "variable": [
-                {
-                  "key": "id",
-                  "value": "{{index_id}}",
-                  "description": "Index ObjectID"
-                }
-              ]
-            },
-            "description": "Get index details by ID"
-          }
-        },
-        {
-          "name": "List Indexes by Collection",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"database_id\": \"{{database_id}}\",\n  \"collection\": \"users\",\n  \"query\": \"\",\n  \"page\": 1,\n  \"limit\": 10\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/list-by-collection",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "indexes", "list-by-collection"]
-            },
-            "description": "Get a paginated list of indexes for a specific collection"
-          }
-        },
-        {
-          "name": "Update Index",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"idx_email_updated\",\n  \"options\": {\n    \"is_unique\": true,\n    \"expire_after_seconds\": null\n  },\n  \"keys\": [\n    {\n      \"field\": \"email\",\n      \"value\": 1\n    }\n  ]\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "indexes", ":id"],
-              "variable": [
-                {
-                  "key": "id",
-                  "value": "{{index_id}}",
-                  "description": "Index ObjectID"
-                }
-              ]
-            },
-            "description": "Update an existing index definition"
-          }
-        },
-        {
-          "name": "Delete Index",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "indexes", ":id"],
-              "variable": [
-                {
-                  "key": "id",
-                  "value": "{{index_id}}",
-                  "description": "Index ObjectID"
-                }
-              ]
-            },
-            "description": "Delete an index definition"
-          }
-        },
-        {
-          "name": "Compare Indexes by Collections",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"database_id\": \"\",\n  \"collections\": [\"users\", \"orders\"]\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/compare-by-collections",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "indexes", "compare-by-collections"]
-            },
-            "description": "Compare indexes in the manager with indexes in the actual MongoDB database for specific collections"
-          }
-        },
-        {
-          "name": "Compare Indexes by Database",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"database_id\": \"{{database_id}}\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/compare-by-database",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "indexes", "compare-by-database"]
-            },
-            "description": "Compare all indexes in the manager with indexes in the actual MongoDB database"
-          }
-        },
-        {
-          "name": "Sync Indexes by Collections",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"database_id\": \"{{database_id}}\",\n  \"collections\": [\"users\", \"orders\"]\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/sync-by-collections",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "indexes", "sync-by-collections"]
-            },
-            "description": "Synchronize indexes from the manager to the actual MongoDB database for specific collections (async operation)"
-          }
-        },
-        {
-          "name": "Sync Indexes by Database",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"database_id\": \"{{database_id}}\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/sync-by-database",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "indexes", "sync-by-database"]
-            },
-            "description": "Synchronize all indexes from the manager to the actual MongoDB database (async operation)"
-          }
-        },
-        {
-          "name": "Sync From Database",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"database_id\": \"{{database_id}}\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/sync-from-database",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "indexes", "sync-from-database"]
-            },
-            "description": "Import indexes from the actual MongoDB database into the manager"
-          }
-        },
-        {
-          "name": "Get Sync Status",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/sync-status/:sync_id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "indexes", "sync-status", ":sync_id"],
-              "variable": [
-                {
-                  "key": "sync_id",
-                  "value": "",
-                  "description": "Sync ID"
-                }
-              ]
-            },
-            "description": "Get sync status by sync ID"
-          }
-        },
-        {
-          "name": "Get Sync Status by Database",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/sync-status/by-database/:database_id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "doctor-manager-api", "v1", "indexes", "sync-status", "by-database", ":database_id"],
-              "variable": [
-                {
-                  "key": "database_id",
-                  "value": "{{database_id}}",
-                  "description": "Database ObjectID"
-                }
-              ]
-            },
-            "description": "Get sync status by database ID"
-          }
-        }
-      ]
-    }
-  ],
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "http://localhost:8216",
-      "type": "string"
-    },
-    {
-      "key": "access_token",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "refresh_token",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "database_id",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "index_id",
-      "value": "",
-      "type": "string"
-    }
-  ],
-  "event": [
-    {
-      "listen": "prerequest",
-      "script": {
-        "type": "text/javascript",
-        "exec": [
-          "// Auto-set Authorization header for authenticated requests",
-          "const authHeader = pm.request.headers.get('Authorization');",
-          "if (authHeader && authHeader.value && authHeader.value.includes('{{access_token}}')) {",
-          "    const token = pm.collectionVariables.get('access_token');",
-          "    if (token) {",
-          "        pm.request.headers.upsert({",
-          "            key: 'Authorization',",
-          "            value: 'Bearer ' + token",
-          "        });",
-          "    }",
-          "}",
-          "if (authHeader && authHeader.value && authHeader.value.includes('{{refresh_token}}')) {",
-          "    const token = pm.collectionVariables.get('refresh_token');",
-          "    if (token) {",
-          "        pm.request.headers.upsert({",
-          "            key: 'Authorization',",
-          "            value: 'Bearer ' + token",
-          "        });",
-          "    }",
-          "}"
-        ]
-      }
-    },
-    {
-      "listen": "test",
-      "script": {
-        "type": "text/javascript",
-        "exec": [
-          "// Auto-save tokens from login response",
-          "if (pm.request.name === 'Login' && pm.response.code === 200) {",
-          "    const jsonData = pm.response.json();",
-          "    if (jsonData.data && jsonData.data.access_token) {",
-          "        pm.collectionVariables.set('access_token', jsonData.data.access_token);",
-          "        pm.collectionVariables.set('refresh_token', jsonData.data.refresh_token);",
-          "        console.log('Tokens saved to collection variables');",
-          "    }",
-          "}",
-          "// Auto-save tokens from refresh token response",
-          "if (pm.request.name === 'Refresh Token' && pm.response.code === 200) {",
-          "    const jsonData = pm.response.json();",
-          "    if (jsonData.data && jsonData.data.access_token) {",
-          "        pm.collectionVariables.set('access_token', jsonData.data.access_token);",
-          "        pm.collectionVariables.set('refresh_token', jsonData.data.refresh_token);",
-          "        console.log('Tokens refreshed and saved to collection variables');",
-          "    }",
-          "}"
-        ]
-      }
-    }
-  ]
+	"info": {
+		"_postman_id": "e69e499f-b0ac-493c-a9c9-ba1a88a0fcf0",
+		"name": "DRManager",
+		"description": "MongoDB Index Manager API - Complete API collection for managing databases and indexes",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Create a new user account"
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.access_token) {",
+									"        pm.collectionVariables.set('access_token', jsonData.data.access_token);",
+									"        pm.collectionVariables.set('refresh_token', jsonData.data.refresh_token);",
+									"        console.log('Tokens saved to collection variables');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"identity\": \"testuser\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticate user and receive access and refresh tokens"
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.access_token) {",
+									"        pm.collectionVariables.set('access_token', jsonData.data.access_token);",
+									"        pm.collectionVariables.set('refresh_token', jsonData.data.refresh_token);",
+									"        console.log('Tokens refreshed and saved to collection variables');",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{refresh_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/auth/refresh-token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"auth",
+								"refresh-token"
+							]
+						},
+						"description": "Obtain new access and refresh tokens using a valid refresh token"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/auth/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"auth",
+								"profile"
+							]
+						},
+						"description": "Get the authenticated user's profile information"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"avatar\": \"https://example.com/avatar.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/auth/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"auth",
+								"profile"
+							]
+						},
+						"description": "Update the authenticated user's profile information"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Databases",
+			"item": [
+				{
+					"name": "Create Database",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.id) {",
+									"        pm.collectionVariables.set('database_id', jsonData.data.id);",
+									"        console.log('Database ID saved to collection variable: ' + jsonData.data.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"KTDL local\",\n  \"description\": \"KTDL - local\",\n  \"uri\": \"{{mongo_local_1}}\",\n  \"db_name\": \"db_ktdl\",\n  \"is_test_connection\": true,\n  \"is_sync_index\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/databases/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"databases",
+								""
+							]
+						},
+						"description": "Create a new database connection configuration"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Database",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/databases/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"databases",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{database_id}}",
+									"description": "Database ObjectID"
+								}
+							]
+						},
+						"description": "Get database details by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "List Databases",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"\",\n  \"page\": 1,\n  \"limit\": 10\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/databases/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"databases",
+								"list"
+							]
+						},
+						"description": "Get a paginated list of databases with optional search"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Database",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Production DB Updated\",\n  \"description\": \"Updated description\",\n  \"uri\": \"mongodb://localhost:27017\",\n  \"db_name\": \"myapp\",\n  \"is_test_connection\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/databases/:id/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"databases",
+								":id",
+								""
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{database_id}}",
+									"description": "Database ObjectID"
+								}
+							]
+						},
+						"description": "Update database connection configuration"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Database",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/databases/:id/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"databases",
+								":id",
+								""
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{database_id}}",
+									"description": "Database ObjectID"
+								}
+							]
+						},
+						"description": "Delete a database configuration and all associated indexes"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Indexes",
+			"item": [
+				{
+					"name": "Create Index",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.id) {",
+									"        pm.collectionVariables.set('index_id', jsonData.data.id);",
+									"        console.log('Index ID saved to collection variable: ' + jsonData.data.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"database_id\": \"{{database_id}}\",\n    \"collection\": \"coll4\",\n    \"name\": \"idx_text_three\",\n    \"options\": {\n        // \"expire_after_seconds\": 0,\n        // \"is_unique\": false,\n        // \"collation\": {\n        //     \"locale\": \"string\",\n        //     \"strength\": 0,\n        //     \"case_level\": true,\n        //     \"case_first\": \"string\",\n        //     \"numeric_ordering\": true\n        // },\n        \"default_language\": \"none\",\n        \"weights\": {\n            \"title\": 1,\n            \"topic\": 1,\n            \"age\": 3\n        }\n    },\n    \"keys\": [\n        {\n            \"field\": \"title\",\n            \"value\": \"text\"\n        },\n        {\n            \"field\": \"topic\",\n            \"value\": \"text\"\n        },\n        {\n            \"field\": \"age\",\n            \"value\": \"text\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"indexes",
+								""
+							]
+						},
+						"description": "Create a new index definition"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Index Copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.id) {",
+									"        pm.collectionVariables.set('index_id', jsonData.data.id);",
+									"        console.log('Index ID saved to collection variable: ' + jsonData.data.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"database_id\": \"{{database_id}}\",\n    \"collection\": \"lakers\",\n    \"name\": \"idx_text_three\",\n    \"options\": {\n        // \"expire_after_seconds\": 0,\n        // \"is_unique\": false,\n        // \"collation\": {\n        //     \"locale\": \"string\",\n        //     \"strength\": 0,\n        //     \"case_level\": true,\n        //     \"case_first\": \"string\",\n        //     \"numeric_ordering\": true\n        // },\n        \"default_language\": \"none\",\n        \"weights\": {\n            \"title\": 1,\n            \"topic\": 1,\n            \"age\": 3\n        }\n    },\n    \"keys\": [\n        {\n            \"field\": \"title\",\n            \"value\": \"text\"\n        },\n        {\n            \"field\": \"topic\",\n            \"value\": \"text\"\n        },\n        {\n            \"field\": \"age\",\n            \"value\": \"text\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"indexes",
+								""
+							]
+						},
+						"description": "Create a new index definition"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Index",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"indexes",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{index_id}}",
+									"description": "Index ObjectID"
+								}
+							]
+						},
+						"description": "Get index details by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "List Indexes by Collection",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"database_id\": \"{{database_id}}\",\n  \"collection\": \"coll4u\",\n  \"query\": \"\",\n  \"page\": 1,\n  \"limit\": 10\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/list-by-collection",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"indexes",
+								"list-by-collection"
+							]
+						},
+						"description": "Get a paginated list of indexes for a specific collection"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Index",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"idx_email_updated\",\n  \"options\": {\n    \"is_unique\": true,\n    \"expire_after_seconds\": null\n  },\n  \"keys\": [\n    {\n      \"field\": \"email\",\n      \"value\": 1\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"indexes",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{index_id}}",
+									"description": "Index ObjectID"
+								}
+							]
+						},
+						"description": "Update an existing index definition"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Index",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"indexes",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{index_id}}",
+									"description": "Index ObjectID"
+								}
+							]
+						},
+						"description": "Delete an index definition"
+					},
+					"response": []
+				},
+				{
+					"name": "Compare Indexes by Collections",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"database_id\": \"{{database_id}}\",\n  \"collections\": [\"feedbacks\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/compare-by-collections",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"indexes",
+								"compare-by-collections"
+							]
+						},
+						"description": "Compare indexes in the manager with indexes in the actual MongoDB database for specific collections"
+					},
+					"response": []
+				},
+				{
+					"name": "Compare Indexes by Database",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"database_id\": \"{{database_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/compare-by-database",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"indexes",
+								"compare-by-database"
+							]
+						},
+						"description": "Compare all indexes in the manager with indexes in the actual MongoDB database"
+					},
+					"response": []
+				},
+				{
+					"name": "Sync Indexes by Collections",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"database_id\": \"{{database_id}}\",\n  \"collections\": [\"feedbacks\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/sync-by-collections",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"indexes",
+								"sync-by-collections"
+							]
+						},
+						"description": "Synchronize indexes from the manager to the actual MongoDB database for specific collections (async operation)"
+					},
+					"response": []
+				},
+				{
+					"name": "Sync Indexes by Database",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"database_id\": \"{{database_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/sync-by-database",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"indexes",
+								"sync-by-database"
+							]
+						},
+						"description": "Synchronize all indexes from the manager to the actual MongoDB database (async operation)"
+					},
+					"response": []
+				},
+				{
+					"name": "Sync From Database",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"database_id\": \"{{database_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/sync-from-database",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"indexes",
+								"sync-from-database"
+							]
+						},
+						"description": "Import indexes from the actual MongoDB database into the manager"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Sync Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/sync-status/:sync_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"indexes",
+								"sync-status",
+								":sync_id"
+							],
+							"variable": [
+								{
+									"key": "sync_id",
+									"value": "",
+									"description": "Sync ID"
+								}
+							]
+						},
+						"description": "Get sync status by sync ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Sync Status by Database",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/indexes/sync-status/by-database/:database_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"indexes",
+								"sync-status",
+								"by-database",
+								":database_id"
+							],
+							"variable": [
+								{
+									"key": "database_id",
+									"value": "{{database_id}}",
+									"description": "Database ObjectID"
+								}
+							]
+						},
+						"description": "Get sync status by database ID"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Collections",
+			"item": [
+				{
+					"name": "List Collections",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"database_id\": \"{{database_id}}\",\n  \"query\": \"\",\n  \"page\": 1,\n  \"limit\": 20\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/databases/collections/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"databases",
+								"collections",
+								"list"
+							]
+						},
+						"description": "Get a paginated list of collections for a database with index counts"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Collection",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"database_id\": \"{{database_id}}\",\n  \"collection\": \"coll4\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/databases/collections",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"databases",
+								"collections"
+							]
+						},
+						"description": "Get a paginated list of collections for a database with index counts"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Collection",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"database_id\": \"{{database_id}}\",\n  \"collection\": \"coll4\",\n  \"new_collection\": \"coll4u\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/databases/collections",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"databases",
+								"collections"
+							]
+						},
+						"description": "Get a paginated list of collections for a database with index counts"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Collection",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"database_id\": \"{{database_id}}\",\n  \"collection\": \"coll4u\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/doctor-manager-api/v1/databases/collections",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"doctor-manager-api",
+								"v1",
+								"databases",
+								"collections"
+							]
+						},
+						"description": "Get a paginated list of collections for a database with index counts"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-set Authorization header for authenticated requests",
+					"const authHeader = pm.request.headers.get('Authorization');",
+					"if (authHeader && authHeader.value && authHeader.value.includes('{{access_token}}')) {",
+					"    const token = pm.collectionVariables.get('access_token');",
+					"    if (token) {",
+					"        pm.request.headers.upsert({",
+					"            key: 'Authorization',",
+					"            value: 'Bearer ' + token",
+					"        });",
+					"    }",
+					"}",
+					"if (authHeader && authHeader.value && authHeader.value.includes('{{refresh_token}}')) {",
+					"    const token = pm.collectionVariables.get('refresh_token');",
+					"    if (token) {",
+					"        pm.request.headers.upsert({",
+					"            key: 'Authorization',",
+					"            value: 'Bearer ' + token",
+					"        });",
+					"    }",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-save tokens from login response",
+					"if (pm.request.name === 'Login' && pm.response.code === 200) {",
+					"    const jsonData = pm.response.json();",
+					"    if (jsonData.data && jsonData.data.access_token) {",
+					"        pm.collectionVariables.set('access_token', jsonData.data.access_token);",
+					"        pm.collectionVariables.set('refresh_token', jsonData.data.refresh_token);",
+					"        console.log('Tokens saved to collection variables');",
+					"    }",
+					"}",
+					"// Auto-save tokens from refresh token response",
+					"if (pm.request.name === 'Refresh Token' && pm.response.code === 200) {",
+					"    const jsonData = pm.response.json();",
+					"    if (jsonData.data && jsonData.data.access_token) {",
+					"        pm.collectionVariables.set('access_token', jsonData.data.access_token);",
+					"        pm.collectionVariables.set('refresh_token', jsonData.data.refresh_token);",
+					"        console.log('Tokens refreshed and saved to collection variables');",
+					"    }",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8216",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refresh_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "database_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "index_id",
+			"value": "",
+			"type": "string"
+		}
+	]
 }

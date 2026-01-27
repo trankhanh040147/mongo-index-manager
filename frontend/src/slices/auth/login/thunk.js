@@ -70,14 +70,6 @@ export const socialLogin = (type, history) => async (dispatch) => {
     try {
         let response;
 
-        if (process.env.REACT_APP_DEFAULTAUTH === "firebase") {
-            const fireBaseBackend = getFirebaseBackend();
-            response = fireBaseBackend.socialLoginUser(type);
-        }
-        //  else {
-        //   response = postSocialLogin(data);
-        // }
-
         const socialdata = await response;
         if (socialdata) {
             localStorage.setItem("authUser", JSON.stringify(response));

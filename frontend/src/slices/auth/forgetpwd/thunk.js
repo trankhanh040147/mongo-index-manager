@@ -8,28 +8,11 @@ import {
     postJwtForgetPwd,
 } from "../../../helpers/backend_helper";
 
-const fireBaseBackend = getFirebaseBackend();
-
 export const userForgetPassword = (user, history) => async (dispatch) => {
     try {
-        let response;
-        if (process.env.REACT_APP_DEFAULTAUTH === "firebase") {
-
-            response = fireBaseBackend.forgetPassword(
-                user.email
-            )
-
-        } else if (process.env.REACT_APP_DEFAULTAUTH === "jwt") {
-            response = postJwtForgetPwd(
-                user.email
-            )
-        } else {
-            response = postFakeForgetPwd(
-                user.email
-            )
-        }
-
-        const data = await response;
+        const data = await postJwtForgetPwd(
+            user.email
+        );
 
         if (data && data.status_code >= 200 && data.status_code < 300) {
             dispatch(userForgetPasswordSuccess(
@@ -41,8 +24,8 @@ export const userForgetPassword = (user, history) => async (dispatch) => {
         }
     } catch (forgetError) {
         const errorData = forgetError.response?.data;
-        const errorMessage = (errorData?.error && typeof errorData.error === 'string') 
-            ? errorData.error 
+        const errorMessage = (errorData?.error && typeof errorData.error === 'string')
+            ? errorData.error
             : (errorData?.message || forgetError.message || "Failed to send reset link");
         dispatch(userForgetPasswordError(errorMessage))
     }

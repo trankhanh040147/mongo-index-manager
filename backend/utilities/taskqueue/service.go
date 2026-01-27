@@ -71,7 +71,7 @@ func (p *workerPool) InitGlobal() {
 }
 
 func (p *workerPool) Start() {
-	if err := p.createIndexes(); err != nil { // todo: move to autoIndexing()
+	if err := p.createIndexes(); err != nil {
 		logger.Fatal().Err(err).Str("function", "Start").Str("functionInline", "createIndexes").Msg("taskqueue")
 	}
 

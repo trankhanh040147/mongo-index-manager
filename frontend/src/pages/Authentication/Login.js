@@ -54,18 +54,15 @@ const Login = (props) => {
     const [passwordShow, setPasswordShow] = useState(false);
 
     useEffect(() => {
-        if (user && user) {
-            const updatedUserData = process.env.REACT_APP_DEFAULTAUTH === "firebase" ? user.multiFactor.user.email : user.user.email;
-            const updatedUserPassword = process.env.REACT_APP_DEFAULTAUTH === "firebase" ? "" : user.user.confirm_password;
+        if (user && user.user) {
             setUserLogin({
-                email: updatedUserData,
-                password: updatedUserPassword
+                email: user.user.email,
+                password: user.user.confirm_password
             });
         }
     }, [user]);
 
     const validation = useFormik({
-        // enableReinitialize : use this flag when initial values needs to be changed
         enableReinitialize: true,
 
         initialValues: {

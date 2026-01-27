@@ -3,7 +3,7 @@ module doctor-manager-api
 go 1.25
 
 require (
-	github.com/bytedance/sonic v1.14.2
+	github.com/bytedance/sonic v1.15.0
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/gofiber/fiber/v2 v2.52.10
@@ -15,7 +15,7 @@ require (
 	go.elastic.co/apm/module/apmhttp/v2 v2.7.2
 	go.elastic.co/apm/module/apmmongo/v2 v2.7.2
 	go.elastic.co/apm/v2 v2.7.2
-	go.mongodb.org/mongo-driver v1.17.6
+	go.mongodb.org/mongo-driver v1.17.7
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/crypto v0.47.0
 	golang.org/x/text v0.33.0
@@ -25,7 +25,7 @@ require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect
-	github.com/bytedance/sonic/loader v0.4.0 // indirect
+	github.com/bytedance/sonic/loader v0.5.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/elastic/go-sysinfo v1.7.1 // indirect
 	github.com/elastic/go-windows v1.0.0 // indirect
